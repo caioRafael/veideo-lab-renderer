@@ -3,11 +3,19 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { buildCommand, formatFfmpegCommand } from './ffmpeg/buildCommand'
+import type { MediaPaths } from './interfaces/build-command'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const assetsDir = path.join(__dirname, 'assets')
+const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+const mediaPaths: MediaPaths = {
+  images: path.join(rootDir, 'input', 'images'),
+  audios: path.join(rootDir, 'input', 'audios'),
+  videos: path.join(rootDir, 'input', 'videos'),
+  outputVideos: path.join(rootDir, 'output', 'videos'),
+}
+
 const defaultCompositionPath = path.join(
-  __dirname,
+  rootDir,
   'compositions',
   'example.json',
 )
@@ -16,7 +24,7 @@ const compositionArg = process.argv.slice(2).find((arg) => arg !== '--')
 
 const compositionPath = path.resolve(compositionArg ?? defaultCompositionPath)
 const composition = JSON.parse(fs.readFileSync(compositionPath, 'utf8'))
-const args = buildCommand({ composition, assetsDir })
+const args = buildCommand({ composition, mediaPaths })
 
 console.log('Composition:', compositionPath)
 console.log('FFmpeg command:')

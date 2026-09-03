@@ -2,7 +2,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { AudioClip, AudioRole } from '../interfaces/audio'
-import type { BuildCommandOptions } from '../interfaces/build-command'
+import type {
+  BuildCommandOptions,
+  MediaPaths,
+} from '../interfaces/build-command'
 import type { Composition } from '../interfaces/composition'
 import type { Scene, SceneType } from '../interfaces/scene'
 
@@ -156,16 +159,35 @@ function parseComposition(value: unknown): Composition {
   return composition
 }
 
-function resolveAsset(assetsDir: string, source: string): string {
-  const resolved = path.join(assetsDir, source)
+function resolveMediaFile(dir: string, source: string, kind: string): string {
+  const resolved = path.join(dir, source)
   if (!fs.existsSync(resolved)) {
-    throw new Error(`Asset not found: ${source} (${resolved})`)
+    throw new Error(`${kind} not found: ${source} (${resolved})`)
   }
   return resolved
 }
 
-function resolveOutput(assetsDir: string, source: string): string {
-  const resolved = path.join(assetsDir, source)
+function resolveImage(mediaPaths: MediaPaths, source: string): string {
+  return resolveMediaFile(mediaPaths.images, source, 'Image')
+}
+
+function resolveVideoInput(mediaPaths: MediaPaths, source: string): string {
+  return resolveMediaFile(mediaPaths.videos, source, 'Video')
+}
+
+function resolveAudio(mediaPaths: MediaPaths, source: string): string {
+  return resolveMediaFile(mediaPaths.audios, source, 'Audio')
+}
+
+function resolveSceneSource(mediaPaths: MediaPaths, scene: Scene): string {
+  if (scene.type === 'image') {
+    return resolveImage(mediaPaths, scene.source)
+  }
+  return resolveVideoInput(mediaPaths, scene.source)
+}
+
+function resolveOutput(mediaPaths: MediaPaths, source: string): string {
+  const resolved = path.join(mediaPaths.outputVideos, source)
   fs.mkdirSync(path.dirname(resolved), { recursive: true })
   return resolved
 }
@@ -203,7 +225,7 @@ function prepareAudioFilter(
 
 function collectAbsoluteAudio(
   composition: Composition,
-  assetsDir: string,
+  mediaPaths: MediaPaths,
   totalSeconds: number,
 ): AbsoluteAudio[] {
   const clips: AbsoluteAudio[] = []
@@ -215,7 +237,7 @@ function collectAbsoluteAudio(
       continue
     }
     clips.push({
-      path: resolveAsset(assetsDir, clip.source),
+      path: resolveAudio(mediaPaths, clip.source),
       start,
       duration: Math.min(clip.duration ?? remaining, remaining),
       volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
@@ -234,7 +256,7 @@ function collectAbsoluteAudio(
         continue
       }
       clips.push({
-        path: resolveAsset(assetsDir, clip.source),
+        path: resolveAudio(mediaPaths, clip.source),
         start: absoluteStart,
         duration: Math.min(clip.duration ?? available, available),
         volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
@@ -248,7 +270,7 @@ function collectAbsoluteAudio(
 
 export function buildCommand(options: BuildCommandOptions): string[] {
   const composition = parseComposition(options.composition)
-  const { assetsDir } = options
+  const { mediaPaths } = options
 
   const width = composition.width ?? 1920
   const height = composition.height ?? 1080
@@ -258,7 +280,7 @@ export function buildCommand(options: BuildCommandOptions): string[] {
     0,
   )
   const outputPath = resolveOutput(
-    assetsDir,
+    mediaPaths,
     composition.output ?? 'output.mp4',
   )
 
@@ -267,7 +289,7 @@ export function buildCommand(options: BuildCommandOptions): string[] {
   const videoLabels: string[] = []
 
   for (const [index, scene] of composition.scenes.entries()) {
-    const sourcePath = resolveAsset(assetsDir, scene.source)
+    const sourcePath = resolveSceneSource(mediaPaths, scene)
 
     if (scene.type === 'image') {
       args.push('-loop', '1', '-t', String(scene.duration), '-i', sourcePath)
@@ -282,7 +304,7 @@ export function buildCommand(options: BuildCommandOptions): string[] {
     videoLabels.push(`[${outputLabel}]`)
   }
 
-  const audioClips = collectAbsoluteAudio(composition, assetsDir, totalSeconds)
+  const audioClips = collectAbsoluteAudio(composition, mediaPaths, totalSeconds)
   const audioInputOffset = composition.scenes.length
 
   if (audioClips.length === 0) {
