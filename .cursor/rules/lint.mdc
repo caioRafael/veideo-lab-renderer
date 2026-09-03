@@ -1,0 +1,49 @@
+---
+
+description: Regras de lint e qualidade de código
+globs:
+
+* "**/*.ts"
+* "**/*.tsx"
+* "**/*.js"
+* "**/*.jsx"
+  alwaysApply: true
+
+---
+
+# ESLint
+
+- O projeto utiliza ESLint como ferramenta oficial de análise estática e padronização do código.
+- Seguir obrigatoriamente as regras definidas pela configuração ESLint do projeto.
+- Utilizar `@rocketseat/eslint-config` como base de configuração.
+- Não desabilitar regras do ESLint sem necessidade e justificativa.
+- Não utilizar `eslint-disable` ou `eslint-disable-next-line` para simplesmente ignorar problemas.
+- Antes de finalizar uma alteração, garantir que o código não introduza novos erros ou warnings de ESLint.
+- Quando o ESLint indicar um problema, corrigir o código em vez de ignorar a regra.
+- Não alterar a configuração do ESLint apenas para fazer um código inválido passar no lint.
+- Manter o código compatível com Prettier e ESLint.
+- Utilizar o script de lint definido no `package.json`.
+- Utilizar `pnpm` para executar o lint.
+
+## Formatação
+
+- Não formatar código manualmente de maneira diferente do padrão definido pelo Prettier.
+- Não introduzir estilos de formatação conflitantes com o Prettier.
+- Manter indentação consistente com a configuração do projeto.
+
+## Qualidade
+
+- Evitar código duplicado.
+- Evitar variáveis, imports e funções não utilizados.
+- Evitar complexidade desnecessária.
+- Preferir código simples, legível e idiomático em TypeScript.
+- Corrigir problemas apontados pelo ESLint antes de considerar uma tarefa concluída.
+
+## Validação
+
+Após alterações relevantes no código:
+
+1. Executar `pnpm lint`.
+2. Corrigir todos os erros encontrados.
+3. Corrigir warnings quando forem causados pela alteração realizada.
+4. Somente considerar a tarefa concluída após o lint passar.

@@ -1,0 +1,65 @@
+---
+description: Padrões de TypeScript do projeto
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+# TypeScript
+
+## Interfaces
+
+- Usar `interface` como padrão para definir estruturas e contratos de objetos.
+- Preferir `interface` em vez de `type` para objetos.
+- Usar `interface` para props, DTOs, entidades, configurações, serviços e contratos.
+- Utilizar `extends` quando uma interface precisar herdar de outra.
+
+Exemplo:
+
+interface User {
+id: string;
+name: string;
+email: string;
+}
+
+## Type
+
+- Evitar `type` para definir objetos.
+- Não criar `type` quando uma `interface` puder ser utilizada.
+- Utilizar `type` apenas quando for necessário representar:
+  - Union types
+  - Intersection types
+  - Tuplas
+  - Tipos derivados
+  - Outros casos em que `interface` não seja adequada.
+
+Exemplo:
+
+type Status = "pending" | "processing" | "completed";
+
+type Result = User & {
+createdAt: Date;
+};
+
+## Tipagem
+
+- Evitar `any`.
+- Preferir tipos explícitos quando a inferência não for suficiente.
+- Utilizar `unknown` quando o tipo for realmente desconhecido.
+- Evitar casts com `as` quando houver uma alternativa mais segura.
+- Não utilizar `@ts-ignore`.
+- Não utilizar `@ts-nocheck`.
+
+## Funções
+
+- Definir tipos para parâmetros e retornos quando isso melhorar a clareza.
+- Evitar funções com responsabilidades excessivas.
+- Preferir funções pequenas e com responsabilidade única.
+
+## Código
+
+- Manter o código fortemente tipado.
+- Não duplicar definições de interfaces.
+- Reutilizar interfaces existentes quando representarem o mesmo conceito.
+- Não criar abstrações de tipos desnecessárias.
