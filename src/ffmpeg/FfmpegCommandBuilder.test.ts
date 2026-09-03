@@ -1,22 +1,49 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { RenderPlan } from '../interfaces/render-plan'
+import type {
+  AudioTrack,
+  OverlayTrack,
+  RenderPlan,
+  TextTrack,
+  VideoTrack,
+} from '../interfaces/render-plan'
 import { FfmpegCommandBuilder } from './FfmpegCommandBuilder'
 
 const builder = new FfmpegCommandBuilder()
+
+function videoTrack(items: VideoTrack['items']): VideoTrack {
+  return { id: 'video', type: 'video', items }
+}
+
+function audioTrack(items: AudioTrack['items']): AudioTrack {
+  return { id: 'audio', type: 'audio', items }
+}
 
 function planWith(overrides: Partial<RenderPlan> = {}): RenderPlan {
   return {
     width: 1920,
     height: 1080,
     fps: 25,
-    totalSeconds: 10,
+    duration: 10,
     outputPath: '/tmp/output.mp4',
-    scenes: [
-      { type: 'image', path: '/tmp/a.png', duration: 4 },
-      { type: 'video', path: '/tmp/b.mp4', duration: 6 },
+    tracks: [
+      videoTrack([
+        {
+          id: 'video-0',
+          source: '/tmp/a.png',
+          start: 0,
+          duration: 4,
+          mediaType: 'image',
+        },
+        {
+          id: 'video-1',
+          source: '/tmp/b.mp4',
+          start: 4,
+          duration: 6,
+          mediaType: 'video',
+        },
+      ]),
     ],
-    audioTracks: [],
     ...overrides,
   }
 }
@@ -28,7 +55,7 @@ function sliceAfter(args: string[], flag: string): string[] {
 }
 
 describe('FfmpegCommandBuilder', () => {
-  it('builds the expected command structure', () => {
+  it('builds the expected command structure from tracks', () => {
     const args = builder.build(planWith())
 
     assert.equal(args[0], '-y')
@@ -70,11 +97,35 @@ describe('FfmpegCommandBuilder', () => {
     assert.equal(args.at(-1), '/tmp/output.mp4')
   })
 
-  it('prepares a single audio track without amix', () => {
+  it('prepares a single audio item without amix', () => {
     const args = builder.build(
       planWith({
-        audioTracks: [
-          { path: '/tmp/voice.mp3', start: 2, duration: 3, volume: 1 },
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 4,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.mp4',
+              start: 4,
+              duration: 6,
+              mediaType: 'video',
+            },
+          ]),
+          audioTrack([
+            {
+              id: 'audio-0',
+              source: '/tmp/voice.mp3',
+              start: 2,
+              duration: 3,
+              volume: 1,
+            },
+          ]),
         ],
       }),
     )
@@ -92,12 +143,42 @@ describe('FfmpegCommandBuilder', () => {
     assert.equal(filterComplex.includes('amix='), false)
   })
 
-  it('mixes multiple audio tracks', () => {
+  it('mixes multiple audio items from tracks', () => {
     const args = builder.build(
       planWith({
-        audioTracks: [
-          { path: '/tmp/bg.mp3', start: 0, duration: 8, volume: 0.3 },
-          { path: '/tmp/voice.mp3', start: 8, duration: 2, volume: 1 },
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 4,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.mp4',
+              start: 4,
+              duration: 6,
+              mediaType: 'video',
+            },
+          ]),
+          audioTrack([
+            {
+              id: 'audio-0',
+              source: '/tmp/bg.mp3',
+              start: 0,
+              duration: 8,
+              volume: 0.3,
+            },
+            {
+              id: 'audio-1',
+              source: '/tmp/voice.mp3',
+              start: 8,
+              duration: 2,
+              volume: 1,
+            },
+          ]),
         ],
       }),
     )
@@ -108,5 +189,90 @@ describe('FfmpegCommandBuilder', () => {
       filterComplex,
       /amix=inputs=2:duration=first:dropout_transition=0:normalize=0\[aout\]/,
     )
+  })
+
+  it('scales and overlays image tracks after the video base', () => {
+    const args = builder.build(
+      planWith({
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 10,
+              mediaType: 'image',
+            },
+          ]),
+          {
+            id: 'overlay',
+            type: 'overlay',
+            items: [
+              {
+                id: 'overlay-0',
+                source: '/tmp/logo.png',
+                start: 1,
+                duration: 5,
+                x: 80,
+                y: 80,
+                width: 280,
+                height: 280,
+              },
+            ],
+          } satisfies OverlayTrack,
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /concat=n=1:v=1:a=0\[vbase\]/)
+    assert.match(filterComplex, /scale=280:280\[ov0\]/)
+    assert.match(
+      filterComplex,
+      /overlay=80:80:enable='between\(t,1,6\)'\[vout\]/,
+    )
+    assert.ok(args.includes('/tmp/logo.png'))
+  })
+
+  it('applies drawtext after overlays', () => {
+    const args = builder.build(
+      planWith({
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 10,
+              mediaType: 'image',
+            },
+          ]),
+          {
+            id: 'text',
+            type: 'text',
+            items: [
+              {
+                id: 'text-0',
+                content: 'Hello World',
+                start: 2,
+                duration: 5,
+                x: 'center',
+                y: 140,
+                fontSize: 72,
+                color: '#FFFFFF',
+                fontPath: '/tmp/Arial.ttf',
+              },
+            ],
+          } satisfies TextTrack,
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /drawtext=fontfile='\/tmp\/Arial.ttf'/)
+    assert.match(filterComplex, /text='Hello World'/)
+    assert.match(filterComplex, /enable='between\(t,2,7\)'/)
   })
 })

@@ -1,0 +1,245 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { after, before, describe, it } from 'node:test'
+import type { Composition } from '../interfaces/composition'
+import {
+  getAudioItems,
+  getOverlayItems,
+  getTextItems,
+  getVideoTrack,
+} from '../interfaces/render-plan'
+import { MediaResolver } from '../media/MediaResolver'
+import { buildRenderPlan } from './buildRenderPlan'
+
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-plan-'))
+const mediaPaths = {
+  images: path.join(tmpRoot, 'images'),
+  audios: path.join(tmpRoot, 'audios'),
+  videos: path.join(tmpRoot, 'videos'),
+  outputVideos: path.join(tmpRoot, 'output'),
+}
+
+const resolver = new MediaResolver(mediaPaths)
+
+before(() => {
+  fs.mkdirSync(mediaPaths.images, { recursive: true })
+  fs.mkdirSync(mediaPaths.audios, { recursive: true })
+  fs.mkdirSync(mediaPaths.videos, { recursive: true })
+  fs.writeFileSync(path.join(mediaPaths.images, 'a.png'), 'image')
+  fs.writeFileSync(path.join(mediaPaths.images, 'b.png'), 'image')
+  fs.writeFileSync(path.join(mediaPaths.images, 'c.png'), 'image')
+  fs.writeFileSync(path.join(mediaPaths.videos, 'clip.mp4'), 'video')
+  fs.writeFileSync(path.join(mediaPaths.audios, 'bg.mp3'), 'audio')
+  fs.writeFileSync(path.join(mediaPaths.audios, 'voice.mp3'), 'audio')
+})
+
+after(() => {
+  fs.rmSync(tmpRoot, { recursive: true, force: true })
+})
+
+function compositionWith(overrides: Partial<Composition> = {}): Composition {
+  return {
+    output: 'result.mp4',
+    width: 1920,
+    height: 1080,
+    fps: 25,
+    scenes: [
+      { type: 'image', source: 'a.png', duration: 5 },
+      { type: 'video', source: 'clip.mp4', duration: 10 },
+      { type: 'image', source: 'c.png', duration: 3 },
+    ],
+    ...overrides,
+  }
+}
+
+describe('buildRenderPlan', () => {
+  it('places sequential scenes on a video track with absolute starts', () => {
+    const plan = buildRenderPlan(compositionWith(), resolver)
+    const videoTrack = getVideoTrack(plan)
+
+    assert.equal(plan.duration, 18)
+    assert.equal(videoTrack?.id, 'video')
+    assert.deepEqual(
+      videoTrack?.items.map((item) => ({
+        id: item.id,
+        start: item.start,
+        duration: item.duration,
+        mediaType: item.mediaType,
+      })),
+      [
+        { id: 'video-0', start: 0, duration: 5, mediaType: 'image' },
+        { id: 'video-1', start: 5, duration: 10, mediaType: 'video' },
+        { id: 'video-2', start: 15, duration: 3, mediaType: 'image' },
+      ],
+    )
+  })
+
+  it('places global audio on an audio track using the absolute start', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        audio: [
+          { source: 'bg.mp3', role: 'background', start: 5, duration: 4 },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getAudioItems(plan), [
+      {
+        id: 'audio-0',
+        source: path.join(mediaPaths.audios, 'bg.mp3'),
+        start: 5,
+        duration: 4,
+        volume: 0.3,
+      },
+    ])
+  })
+
+  it('places scene audio using a start relative to the scene', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'image',
+            source: 'b.png',
+            duration: 10,
+            audio: [{ source: 'voice.mp3', role: 'focus', start: 2 }],
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const [clip] = getAudioItems(plan)
+    assert.equal(clip?.id, 'audio-0')
+    assert.equal(clip?.start, 7)
+    assert.equal(clip?.duration, 8)
+    assert.equal(clip?.volume, 1)
+  })
+
+  it('allows video and audio items to occupy the same time range', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        audio: [{ source: 'voice.mp3', role: 'focus', start: 3, duration: 4 }],
+      }),
+      resolver,
+    )
+
+    const videoItem = getVideoTrack(plan)?.items[0]
+    const audioItem = getAudioItems(plan)[0]
+
+    assert.equal(plan.duration, 10)
+    assert.equal(videoItem?.start, 0)
+    assert.equal(videoItem?.duration, 10)
+    assert.equal(audioItem?.start, 3)
+    assert.equal(audioItem?.duration, 4)
+
+    const videoEnd = (videoItem?.start ?? 0) + (videoItem?.duration ?? 0)
+    const audioEnd = (audioItem?.start ?? 0) + (audioItem?.duration ?? 0)
+    assert.equal(audioItem !== undefined && videoItem !== undefined, true)
+    assert.equal((audioItem?.start ?? 0) < videoEnd, true)
+    assert.equal(audioEnd > (videoItem?.start ?? 0), true)
+    assert.notEqual(
+      getVideoTrack(plan)?.id,
+      plan.tracks.find((track) => track.type === 'audio')?.id,
+    )
+  })
+
+  it('resolves media sources before storing them on items', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 4 }],
+      }),
+      resolver,
+    )
+
+    assert.equal(
+      getVideoTrack(plan)?.items[0]?.source,
+      path.join(mediaPaths.images, 'a.png'),
+    )
+    assert.equal(
+      plan.outputPath,
+      path.join(mediaPaths.outputVideos, 'result.mp4'),
+    )
+  })
+
+  it('builds the same plan for the same composition', () => {
+    const composition = compositionWith({
+      audio: [{ source: 'bg.mp3', role: 'background', start: 1 }],
+    })
+
+    assert.deepEqual(
+      buildRenderPlan(composition, resolver),
+      buildRenderPlan(composition, resolver),
+    )
+  })
+
+  it('places texts on a text track', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        texts: [
+          {
+            content: 'Hello World',
+            start: 2,
+            duration: 5,
+            x: 'center',
+            y: 140,
+            fontSize: 72,
+            color: '#FFFFFF',
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const [item] = getTextItems(plan)
+    assert.equal(item?.id, 'text-0')
+    assert.equal(item?.content, 'Hello World')
+    assert.equal(item?.start, 2)
+    assert.equal(item?.duration, 5)
+    assert.equal(item?.x, 'center')
+    assert.equal(item?.y, 140)
+    assert.equal(item?.fontSize, 72)
+    assert.equal(item?.color, '#FFFFFF')
+    assert.ok(item?.fontPath)
+  })
+
+  it('places overlays on an overlay track with a resolved source', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        overlays: [
+          {
+            source: 'b.png',
+            start: 3,
+            duration: 4,
+            x: 80,
+            y: 80,
+            width: 280,
+            height: 280,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getOverlayItems(plan), [
+      {
+        id: 'overlay-0',
+        source: path.join(mediaPaths.images, 'b.png'),
+        start: 3,
+        duration: 4,
+        x: 80,
+        y: 80,
+        width: 280,
+        height: 280,
+      },
+    ])
+  })
+})

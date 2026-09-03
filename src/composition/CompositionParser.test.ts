@@ -122,4 +122,92 @@ describe('CompositionParser', () => {
       { source: 'sfx.mp3', role: 'focus', start: 1 },
     ])
   })
+
+  it('parses texts with defaults', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+      texts: [{ content: 'Hello', duration: 4 }],
+    })
+
+    assert.deepEqual(composition.texts, [
+      {
+        content: 'Hello',
+        start: 0,
+        duration: 4,
+        x: 'center',
+        y: 'center',
+        fontSize: 48,
+        color: '#FFFFFF',
+      },
+    ])
+  })
+
+  it('parses texts and overlays from the public schema', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+      texts: [
+        {
+          content: 'Video Lab',
+          start: 2,
+          duration: 5,
+          x: 'center',
+          y: 140,
+          fontSize: 72,
+          color: '#FFD400',
+        },
+      ],
+      overlays: [
+        {
+          source: 'logo.png',
+          start: 1,
+          duration: 3,
+          x: 80,
+          y: 80,
+          width: 280,
+          height: 280,
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.texts?.[0], {
+      content: 'Video Lab',
+      start: 2,
+      duration: 5,
+      x: 'center',
+      y: 140,
+      fontSize: 72,
+      color: '#FFD400',
+    })
+    assert.deepEqual(composition.overlays?.[0], {
+      source: 'logo.png',
+      start: 1,
+      duration: 3,
+      x: 80,
+      y: 80,
+      width: 280,
+      height: 280,
+    })
+  })
+
+  it('rejects an empty text content', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: '', duration: 4 }],
+        }),
+      /content is required/,
+    )
+  })
+
+  it('rejects an invalid text position', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, x: 'left' }],
+        }),
+      /must be a number or "center"/,
+    )
+  })
 })

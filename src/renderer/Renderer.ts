@@ -1,4 +1,5 @@
 import { AudioTimeline } from '../composition/AudioTimeline'
+import { ffmpegSupportsDrawtext } from '../ffmpeg/ffmpegCapabilities'
 import { FfmpegCommandBuilder } from '../ffmpeg/FfmpegCommandBuilder'
 import {
   SpawnFfmpegExecutor,
@@ -6,8 +7,10 @@ import {
 } from '../ffmpeg/FfmpegExecutor'
 import { formatFfmpegCommand } from '../ffmpeg/formatFfmpegCommand'
 import type { Composition } from '../interfaces/composition'
-import type { RenderPlan } from '../interfaces/render-plan'
+import { getTextItems, type RenderPlan } from '../interfaces/render-plan'
 import type { MediaResolver } from '../media/MediaResolver'
+import { rasterizeTextTrack } from '../media/rasterizeTextTrack'
+import { buildRenderPlan } from './buildRenderPlan'
 
 export interface RendererOptions {
   mediaResolver: MediaResolver
@@ -35,7 +38,7 @@ export class Renderer {
   }
 
   async render(composition: Composition): Promise<RenderResult> {
-    const plan = this.createPlan(composition)
+    const plan = this.preparePlan(composition)
     const args = this.commandBuilder.build(plan)
 
     console.log('FFmpeg command:')
@@ -50,31 +53,17 @@ export class Renderer {
     }
   }
 
-  private createPlan(composition: Composition): RenderPlan {
-    const totalSeconds = composition.scenes.reduce(
-      (sum, scene) => sum + scene.duration,
-      0,
+  private preparePlan(composition: Composition): RenderPlan {
+    const plan = buildRenderPlan(
+      composition,
+      this.mediaResolver,
+      this.audioTimeline,
     )
 
-    return {
-      width: composition.width,
-      height: composition.height,
-      fps: composition.fps,
-      totalSeconds,
-      outputPath: this.mediaResolver.resolveOutput(composition.output),
-      scenes: composition.scenes.map((scene) => ({
-        type: scene.type,
-        path: this.mediaResolver.resolveSceneSource(scene),
-        duration: scene.duration,
-      })),
-      audioTracks: this.audioTimeline
-        .collect(composition, totalSeconds)
-        .map((clip) => ({
-          path: this.mediaResolver.resolveAudio(clip.source),
-          start: clip.start,
-          duration: clip.duration,
-          volume: clip.volume,
-        })),
+    if (getTextItems(plan).length === 0 || ffmpegSupportsDrawtext()) {
+      return plan
     }
+
+    return rasterizeTextTrack(plan)
   }
 }

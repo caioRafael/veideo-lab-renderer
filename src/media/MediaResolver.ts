@@ -22,6 +22,10 @@ export class MediaResolver {
     return this.resolveMediaFile(this.mediaPaths.audios, source, 'Audio')
   }
 
+  resolveOverlay(source: string): string {
+    return this.resolveImage(source)
+  }
+
   resolveOutput(source: string): string {
     const resolved = path.join(this.mediaPaths.outputVideos, source)
     fs.mkdirSync(path.dirname(resolved), { recursive: true })

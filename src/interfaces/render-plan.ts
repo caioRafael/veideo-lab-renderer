@@ -1,24 +1,105 @@
 import type { SceneType } from './scene'
+import type { PositionValue } from './text'
 
-export interface RenderScene {
-  type: SceneType
-  path: string
-  duration: number
-}
+export type RenderTrackType = 'video' | 'audio' | 'overlay' | 'text'
 
-export interface RenderAudioTrack {
-  path: string
+export interface RenderItem {
+  id: string
+  source: string
   start: number
   duration: number
+}
+
+export interface VideoItem extends RenderItem {
+  mediaType: SceneType
+}
+
+export interface AudioItem extends RenderItem {
   volume: number
 }
+
+export interface OverlayItem extends RenderItem {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface TextItem {
+  id: string
+  content: string
+  start: number
+  duration: number
+  x: PositionValue
+  y: PositionValue
+  fontSize: number
+  color: string
+  fontPath: string
+}
+
+export interface VideoTrack {
+  id: string
+  type: 'video'
+  items: VideoItem[]
+}
+
+export interface AudioTrack {
+  id: string
+  type: 'audio'
+  items: AudioItem[]
+}
+
+export interface OverlayTrack {
+  id: string
+  type: 'overlay'
+  items: OverlayItem[]
+}
+
+export interface TextTrack {
+  id: string
+  type: 'text'
+  items: TextItem[]
+}
+
+export type RenderTrack = VideoTrack | AudioTrack | OverlayTrack | TextTrack
 
 export interface RenderPlan {
   width: number
   height: number
   fps: number
-  totalSeconds: number
+  duration: number
   outputPath: string
-  scenes: RenderScene[]
-  audioTracks: RenderAudioTrack[]
+  tracks: RenderTrack[]
+}
+
+export function isVideoTrack(track: RenderTrack): track is VideoTrack {
+  return track.type === 'video'
+}
+
+export function isAudioTrack(track: RenderTrack): track is AudioTrack {
+  return track.type === 'audio'
+}
+
+export function isOverlayTrack(track: RenderTrack): track is OverlayTrack {
+  return track.type === 'overlay'
+}
+
+export function isTextTrack(track: RenderTrack): track is TextTrack {
+  return track.type === 'text'
+}
+
+export function getVideoTrack(plan: RenderPlan): VideoTrack | undefined {
+  return plan.tracks.find(isVideoTrack)
+}
+
+export function getAudioItems(plan: RenderPlan): AudioItem[] {
+  return plan.tracks.filter(isAudioTrack).flatMap((track) => track.items)
+}
+
+export function getOverlayItems(plan: RenderPlan): OverlayItem[] {
+  return plan.tracks.filter(isOverlayTrack).flatMap((track) => track.items)
+}
+
+export function getTextItems(plan: RenderPlan): TextItem[] {
+  return plan.tracks.filter(isTextTrack).flatMap((track) => track.items)
 }
