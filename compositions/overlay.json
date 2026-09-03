@@ -1,0 +1,30 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 6 },
+    { "type": "image", "source": "flamengo.png", "duration": 6 }
+  ],
+  "overlays": [
+    {
+      "source": "input.png",
+      "start": 1,
+      "duration": 5,
+      "x": 80,
+      "y": 80,
+      "width": 280,
+      "height": 280
+    },
+    {
+      "source": "input.png",
+      "start": 7,
+      "duration": 5,
+      "x": 1560,
+      "y": 720,
+      "width": 280,
+      "height": 280
+    }
+  ]
+}

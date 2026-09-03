@@ -1,0 +1,40 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 5 },
+    { "type": "image", "source": "input.png", "duration": 5 },
+    { "type": "image", "source": "flamengo.png", "duration": 4 }
+  ],
+  "texts": [
+    {
+      "content": "Video Lab",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 140,
+      "fontSize": 72,
+      "color": "#FFFFFF"
+    },
+    {
+      "content": "Cena 2",
+      "start": 5,
+      "duration": 5,
+      "x": "center",
+      "y": 900,
+      "fontSize": 48,
+      "color": "#FFFFFF"
+    },
+    {
+      "content": "Encerramento",
+      "start": 10,
+      "duration": 4,
+      "x": "center",
+      "y": "center",
+      "fontSize": 64,
+      "color": "#FFD400"
+    }
+  ]
+}

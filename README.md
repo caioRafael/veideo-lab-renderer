@@ -36,6 +36,9 @@ pnpm dev
 # composição específica
 pnpm dev -- compositions/scenes-with-audio.json
 pnpm dev -- compositions/background-and-scene-audio.json
+pnpm dev -- compositions/texts.json
+pnpm dev -- compositions/overlay.json
+pnpm dev -- compositions/full-timeline.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
@@ -116,11 +119,55 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 | `duration` | (opcional) duração do trecho |
 | `volume` | (opcional) sobrescreve o volume do `role` |
 
+### Textos e overlays
+
+Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados no MP4.
+
+```json
+{
+  "texts": [
+    {
+      "content": "Video Lab",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 140,
+      "fontSize": 72,
+      "color": "#FFFFFF"
+    }
+  ],
+  "overlays": [
+    {
+      "source": "input.png",
+      "start": 1,
+      "duration": 5,
+      "x": 80,
+      "y": 80,
+      "width": 280,
+      "height": 280
+    }
+  ]
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `texts[].content` | texto exibido |
+| `texts[].start` / `duration` | posição absoluta na timeline |
+| `texts[].x` / `y` | posição (`center` ou pixel) |
+| `overlays[].source` | imagem em `input/images/` |
+| `overlays[].start` / `duration` | posição absoluta na timeline |
+| `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
+
 ### Exemplos prontos
 
 - `compositions/example.json` — áudios globais na timeline
 - `compositions/scenes-with-audio.json` — áudio dentro de cada cena
 - `compositions/background-and-scene-audio.json` — background global + focus na cena
+- `compositions/texts.json` — títulos e legendas nas cenas
+- `compositions/overlay.json` — imagem sobreposta em posições diferentes
+- `compositions/text-and-overlay.json` — texto + overlay juntos
+- `compositions/full-timeline.json` — cenas, áudio, texto e overlay
 
 ## Arquitetura
 

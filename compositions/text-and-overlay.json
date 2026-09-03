@@ -1,0 +1,41 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 6 },
+    { "type": "image", "source": "input.png", "duration": 6 }
+  ],
+  "overlays": [
+    {
+      "source": "flamengo.png",
+      "start": 6,
+      "duration": 6,
+      "x": 80,
+      "y": 80,
+      "width": 240,
+      "height": 240
+    }
+  ],
+  "texts": [
+    {
+      "content": "Abertura",
+      "start": 0,
+      "duration": 6,
+      "x": "center",
+      "y": 120,
+      "fontSize": 64,
+      "color": "#FFFFFF"
+    },
+    {
+      "content": "Com overlay",
+      "start": 6,
+      "duration": 6,
+      "x": 360,
+      "y": 120,
+      "fontSize": 48,
+      "color": "#FFFFFF"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 5 },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 5,
+      "audio": [
+        {
+          "source": "audio2.mp3",
+          "role": "focus",
+          "start": 0,
+          "duration": 5
+        }
+      ]
+    },
+    { "type": "image", "source": "flamengo.png", "duration": 6 }
+  ],
+  "audio": [
+    {
+      "source": "audio.mp3",
+      "role": "background",
+      "start": 0,
+      "duration": 16
+    }
+  ],
+  "overlays": [
+    {
+      "source": "input.png",
+      "start": 11,
+      "duration": 5,
+      "x": 80,
+      "y": 80,
+      "width": 220,
+      "height": 220
+    }
+  ],
+  "texts": [
+    {
+      "content": "Video Lab",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 140,
+      "fontSize": 72,
+      "color": "#FFFFFF"
+    },
+    {
+      "content": "Narração na cena 2",
+      "start": 5,
+      "duration": 5,
+      "x": "center",
+      "y": 920,
+      "fontSize": 40,
+      "color": "#FFFFFF"
+    },
+    {
+      "content": "Logo + encerramento",
+      "start": 11,
+      "duration": 5,
+      "x": 340,
+      "y": 140,
+      "fontSize": 48,
+      "color": "#FFD400"
+    }
+  ]
+}
