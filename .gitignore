@@ -6,6 +6,8 @@ node_modules/
 
 # Build
 dist/
+output.mp4
+*.mp4
 
 # Environment
 .env
