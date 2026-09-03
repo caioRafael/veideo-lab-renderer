@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { buildCommand, formatFfmpegCommand } from './ffmpeg/buildCommand'
+import { FfmpegCommandBuilder } from './ffmpeg/FfmpegCommandBuilder'
+import { formatFfmpegCommand } from './ffmpeg/formatFfmpegCommand'
 import type { MediaPaths } from './interfaces/build-command'
 
 const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -24,7 +25,7 @@ const compositionArg = process.argv.slice(2).find((arg) => arg !== '--')
 
 const compositionPath = path.resolve(compositionArg ?? defaultCompositionPath)
 const composition = JSON.parse(fs.readFileSync(compositionPath, 'utf8'))
-const args = buildCommand({ composition, mediaPaths })
+const args = new FfmpegCommandBuilder({ composition, mediaPaths }).build()
 
 console.log('Composition:', compositionPath)
 console.log('FFmpeg command:')
