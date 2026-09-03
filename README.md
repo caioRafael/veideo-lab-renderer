@@ -21,20 +21,24 @@ brew install ffmpeg
 pnpm install
 ```
 
-Coloque as mídias em `src/assets/` (imagens, vídeos, áudios).
+Coloque as mídias nas pastas de `input/`:
+
+- imagens → `input/images/`
+- áudios → `input/audios/`
+- vídeos de cena → `input/videos/`
 
 ## Uso
 
 ```bash
-# composição padrão (src/compositions/example.json)
+# composição padrão (compositions/example.json)
 pnpm dev
 
 # composição específica
-pnpm dev -- src/compositions/scenes-with-audio.json
-pnpm dev -- src/compositions/background-and-scene-audio.json
+pnpm dev -- compositions/scenes-with-audio.json
+pnpm dev -- compositions/background-and-scene-audio.json
 ```
 
-A saída padrão é `src/assets/output.mp4`.
+A saída padrão é `output/videos/output.mp4`.
 
 Antes de renderizar, o programa imprime o comando FFmpeg montado.
 
@@ -72,12 +76,21 @@ Exemplo mínimo:
 }
 ```
 
+Os `source` são só o nome do arquivo. A pasta é inferida pelo tipo:
+
+| Tipo | Pasta |
+|---|---|
+| `image` | `input/images/` |
+| `video` | `input/videos/` |
+| áudio | `input/audios/` |
+| `output` | `output/videos/` |
+
 ### Cenas (`scenes`)
 
 | Campo | Descrição |
 |---|---|
 | `type` | `image` ou `video` |
-| `source` | arquivo em `src/assets/` |
+| `source` | nome do arquivo na pasta correspondente |
 | `duration` | duração em segundos |
 | `audio` | (opcional) áudios da cena |
 
@@ -87,7 +100,7 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 
 | Campo | Descrição |
 |---|---|
-| `source` | arquivo em `src/assets/` |
+| `source` | nome do arquivo em `input/audios/` |
 | `role` | `background` (vol. 0.3) ou `focus` (vol. 1.0) |
 | `start` | início na timeline (absoluto no global; relativo à cena no local) |
 | `duration` | (opcional) duração do trecho |
@@ -95,21 +108,25 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 
 ### Exemplos prontos
 
-- `src/compositions/example.json` — áudios globais na timeline
-- `src/compositions/scenes-with-audio.json` — áudio dentro de cada cena
-- `src/compositions/background-and-scene-audio.json` — background global + focus na cena
+- `compositions/example.json` — áudios globais na timeline
+- `compositions/scenes-with-audio.json` — áudio dentro de cada cena
+- `compositions/background-and-scene-audio.json` — background global + focus na cena
 
 ## Estrutura
 
 ```text
+input/
+  images/           # imagens das cenas
+  audios/           # áudios
+  videos/           # vídeos de cena
+output/
+  videos/           # MP4s gerados
+compositions/       # JSONs de composição
 src/
-  assets/           # mídias de entrada/saída
-  compositions/     # JSONs de composição
-  interfaces/       # tipagens (Composition, Scene, Audio, ...)
+  interfaces/       # tipagens
   ffmpeg/
     buildCommand.ts # JSON → args do FFmpeg
   index.ts          # entrada (lê JSON e executa)
-flow-create-video.md
 ```
 
 ## Documentação

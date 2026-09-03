@@ -27,7 +27,7 @@ ffmpeg -y
 
 ## Schema do JSON
 
-Arquivo exemplo: `src/compositions/example.json`
+Arquivo exemplo: `compositions/example.json`
 
 ```json
 {
@@ -51,7 +51,7 @@ Arquivo exemplo: `src/compositions/example.json`
 
 - `scenes`: lista visual em sequência
   - `type`: `image` ou `video`
-  - `source`: arquivo em `src/assets/`
+  - `source`: nome do arquivo em `input/images/` ou `input/videos/`
   - `duration`: segundos
   - `audio?`: áudios da cena (`start` relativo ao início da cena)
 - `audio`: áudios globais (`start` absoluto na timeline)
@@ -84,13 +84,13 @@ JSON:
 FFmpeg:
 
 ```bash
--loop 1 -t 4 -i src/assets/flamengo.png
+-loop 1 -t 4 -i input/images/flamengo.png
 ```
 
 Para `type: "video"`:
 
 ```bash
--t 6 -i src/assets/clip.mp4
+-t 6 -i input/videos/clip.mp4
 ```
 
 ### 2. Preparar e concatenar vídeo
@@ -120,7 +120,7 @@ JSON global:
 Vira input:
 
 ```bash
--i src/assets/audio2.mp3
+-i input/audios/audio2.mp3
 ```
 
 E filtro:
@@ -167,7 +167,7 @@ Assim background e focus podem tocar juntos; o foco sobressai pelo volume.
 -map "[vout]" -map "[aout]" \
 -c:v libx264 -c:a aac \
 -t 14 -pix_fmt yuv420p \
-src/assets/output.mp4
+output/videos/output.mp4
 ```
 
 ---
@@ -191,7 +191,7 @@ audio[1]  atrim/volume/adelay ─► [a1] ─┘
 ```bash
 pnpm dev
 # ou
-pnpm dev -- src/compositions/example.json
+pnpm dev -- compositions/example.json
 ```
 
 O programa imprime o comando FFmpeg montado antes de executar — útil para estudar o que o JSON gerou.
