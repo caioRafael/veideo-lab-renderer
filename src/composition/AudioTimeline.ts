@@ -1,4 +1,3 @@
-import type { MediaResolver } from '../ffmpeg/MediaResolver'
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
@@ -9,12 +8,6 @@ const DEFAULT_VOLUME: Record<AudioRole, number> = {
 }
 
 export class AudioTimeline {
-  private readonly resolver: MediaResolver
-
-  constructor(resolver: MediaResolver) {
-    this.resolver = resolver
-  }
-
   collect(composition: Composition, totalSeconds: number): AbsoluteAudio[] {
     const clips: AbsoluteAudio[] = []
 
@@ -25,7 +18,7 @@ export class AudioTimeline {
         continue
       }
       clips.push({
-        path: this.resolver.resolveAudio(clip.source),
+        source: clip.source,
         start,
         duration: Math.min(clip.duration ?? remaining, remaining),
         volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
@@ -44,7 +37,7 @@ export class AudioTimeline {
           continue
         }
         clips.push({
-          path: this.resolver.resolveAudio(clip.source),
+          source: clip.source,
           start: absoluteStart,
           duration: Math.min(clip.duration ?? available, available),
           volume: clip.volume ?? DEFAULT_VOLUME[clip.role],

@@ -1,4 +1,8 @@
-import type { AbsoluteAudio } from '../interfaces/absolute-audio'
+export interface AudioFilterClip {
+  start: number
+  duration: number
+  volume: number
+}
 
 export class AudioFilter {
   private readonly totalSeconds: number
@@ -10,7 +14,7 @@ export class AudioFilter {
   prepare(
     inputLabel: string,
     outputLabel: string,
-    clip: AbsoluteAudio,
+    clip: AudioFilterClip,
   ): string {
     const delayMs = Math.round(clip.start * 1000)
     return (
@@ -25,5 +29,13 @@ export class AudioFilter {
       ].join(',') +
       `[${outputLabel}]`
     )
+  }
+
+  silence(inputLabel: string, outputLabel: string): string {
+    return `[${inputLabel}]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[${outputLabel}]`
+  }
+
+  mix(audioLabels: string[], outputLabel: string): string {
+    return `${audioLabels.join('')}amix=inputs=${audioLabels.length}:duration=first:dropout_transition=0:normalize=0[${outputLabel}]`
   }
 }

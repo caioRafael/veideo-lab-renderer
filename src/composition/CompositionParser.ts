@@ -2,6 +2,11 @@ import type { AudioClip, AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
 import type { Scene, SceneType } from '../interfaces/scene'
 
+const DEFAULT_OUTPUT = 'output.mp4'
+const DEFAULT_WIDTH = 1920
+const DEFAULT_HEIGHT = 1080
+const DEFAULT_FPS = 25
+
 export class CompositionParser {
   parse(value: unknown): Composition {
     if (!this.isRecord(value)) {
@@ -13,25 +18,13 @@ export class CompositionParser {
     }
 
     const composition: Composition = {
+      output: typeof value.output === 'string' ? value.output : DEFAULT_OUTPUT,
+      width: typeof value.width === 'number' ? value.width : DEFAULT_WIDTH,
+      height: typeof value.height === 'number' ? value.height : DEFAULT_HEIGHT,
+      fps: typeof value.fps === 'number' ? value.fps : DEFAULT_FPS,
       scenes: value.scenes.map((scene, index) =>
         this.parseScene(scene, `scenes[${index}]`),
       ),
-    }
-
-    if (typeof value.output === 'string') {
-      composition.output = value.output
-    }
-
-    if (typeof value.width === 'number') {
-      composition.width = value.width
-    }
-
-    if (typeof value.height === 'number') {
-      composition.height = value.height
-    }
-
-    if (typeof value.fps === 'number') {
-      composition.fps = value.fps
     }
 
     if (value.audio !== undefined) {

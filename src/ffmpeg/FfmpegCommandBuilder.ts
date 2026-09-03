@@ -1,48 +1,21 @@
-import { AudioTimeline } from '../composition/AudioTimeline'
-import { CompositionParser } from '../composition/CompositionParser'
-import type { BuildCommandOptions } from '../interfaces/build-command'
+import type { RenderPlan } from '../interfaces/render-plan'
 import { AudioFilter } from './AudioFilter'
-import { MediaResolver } from './MediaResolver'
 import { VideoFilter } from './VideoFilter'
 
 export class FfmpegCommandBuilder {
-  private readonly options: BuildCommandOptions
-
-  constructor(options: BuildCommandOptions) {
-    this.options = options
-  }
-
-  build(): string[] {
-    const composition = new CompositionParser().parse(this.options.composition)
-    const resolver = new MediaResolver(this.options.mediaPaths)
-
-    const width = composition.width ?? 1920
-    const height = composition.height ?? 1080
-    const fps = composition.fps ?? 25
-    const totalSeconds = composition.scenes.reduce(
-      (sum, scene) => sum + scene.duration,
-      0,
-    )
-
-    const outputPath = resolver.resolveOutput(
-      composition.output ?? 'output.mp4',
-    )
-
-    const videoFilter = new VideoFilter(width, height, fps)
-    const audioFilter = new AudioFilter(totalSeconds)
-    const audioTimeline = new AudioTimeline(resolver)
+  build(plan: RenderPlan): string[] {
+    const videoFilter = new VideoFilter(plan.width, plan.height, plan.fps)
+    const audioFilter = new AudioFilter(plan.totalSeconds)
 
     const args: string[] = ['-y']
     const filterParts: string[] = []
     const videoLabels: string[] = []
 
-    for (const [index, scene] of composition.scenes.entries()) {
-      const sourcePath = resolver.resolveSceneSource(scene)
-
+    for (const [index, scene] of plan.scenes.entries()) {
       if (scene.type === 'image') {
-        args.push('-loop', '1', '-t', String(scene.duration), '-i', sourcePath)
+        args.push('-loop', '1', '-t', String(scene.duration), '-i', scene.path)
       } else {
-        args.push('-t', String(scene.duration), '-i', sourcePath)
+        args.push('-t', String(scene.duration), '-i', scene.path)
       }
 
       const outputLabel = `v${index}`
@@ -50,50 +23,46 @@ export class FfmpegCommandBuilder {
       videoLabels.push(`[${outputLabel}]`)
     }
 
-    const audioClips = audioTimeline.collect(composition, totalSeconds)
-    const audioInputOffset = composition.scenes.length
+    const audioInputOffset = plan.scenes.length
 
-    if (audioClips.length === 0) {
+    if (plan.audioTracks.length === 0) {
       args.push(
         '-f',
         'lavfi',
         '-t',
-        String(totalSeconds),
+        String(plan.totalSeconds),
         '-i',
         'anullsrc=channel_layout=stereo:sample_rate=44100',
       )
     } else {
-      for (const clip of audioClips) {
-        args.push('-i', clip.path)
+      for (const track of plan.audioTracks) {
+        args.push('-i', track.path)
       }
     }
 
-    filterParts.push(
-      `${videoLabels.join('')}concat=n=${composition.scenes.length}:v=1:a=0[vout]`,
-    )
+    filterParts.push(videoFilter.concat(videoLabels))
 
-    if (audioClips.length === 0) {
+    if (plan.audioTracks.length === 0) {
+      filterParts.push(audioFilter.silence(`${audioInputOffset}:a`, 'aout'))
+    } else if (plan.audioTracks.length === 1) {
+      const track = plan.audioTracks[0]
+      if (!track) {
+        throw new Error('Expected a single audio track')
+      }
       filterParts.push(
-        `[${audioInputOffset}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[aout]`,
-      )
-    } else if (audioClips.length === 1) {
-      const clip = audioClips[0]!
-      filterParts.push(
-        audioFilter.prepare(`${audioInputOffset}:a`, 'aout', clip),
+        audioFilter.prepare(`${audioInputOffset}:a`, 'aout', track),
       )
     } else {
       const audioLabels: string[] = []
-      for (const [index, clip] of audioClips.entries()) {
+      for (const [index, track] of plan.audioTracks.entries()) {
         const inputIndex = audioInputOffset + index
         const outputLabel = `a${index}`
         filterParts.push(
-          audioFilter.prepare(`${inputIndex}:a`, outputLabel, clip),
+          audioFilter.prepare(`${inputIndex}:a`, outputLabel, track),
         )
         audioLabels.push(`[${outputLabel}]`)
       }
-      filterParts.push(
-        `${audioLabels.join('')}amix=inputs=${audioClips.length}:duration=first:dropout_transition=0:normalize=0[aout]`,
-      )
+      filterParts.push(audioFilter.mix(audioLabels, 'aout'))
     }
 
     args.push(
@@ -108,10 +77,10 @@ export class FfmpegCommandBuilder {
       '-c:a',
       'aac',
       '-t',
-      String(totalSeconds),
+      String(plan.totalSeconds),
       '-pix_fmt',
       'yuv420p',
-      outputPath,
+      plan.outputPath,
     )
 
     return args

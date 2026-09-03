@@ -1,5 +1,5 @@
 export interface AbsoluteAudio {
-  path: string
+  source: string
   start: number
   duration: number
   volume: number

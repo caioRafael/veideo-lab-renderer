@@ -4,8 +4,3 @@ export interface MediaPaths {
   videos: string
   outputVideos: string
 }
-
-export interface BuildCommandOptions {
-  composition: unknown
-  mediaPaths: MediaPaths
-}
