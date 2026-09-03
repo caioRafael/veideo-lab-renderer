@@ -31,3 +31,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# media files   
+*.mp3
+*.mp4
