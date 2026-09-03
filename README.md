@@ -38,6 +38,15 @@ A saída padrão é `src/assets/output.mp4`.
 
 Antes de renderizar, o programa imprime o comando FFmpeg montado.
 
+## Lint
+
+```bash
+pnpm lint
+pnpm lint:fix
+```
+
+O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier).
+
 ## Composição JSON
 
 Exemplo mínimo:
@@ -96,6 +105,7 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 src/
   assets/           # mídias de entrada/saída
   compositions/     # JSONs de composição
+  interfaces/       # tipagens (Composition, Scene, Audio, ...)
   ffmpeg/
     buildCommand.ts # JSON → args do FFmpeg
   index.ts          # entrada (lê JSON e executa)
