@@ -1,0 +1,41 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 4,
+      "audio": [
+        {
+          "source": "audio.mp3",
+          "role": "focus"
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 4,
+      "audio": [
+        {
+          "source": "audio2.mp3",
+          "role": "focus"
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 6,
+      "audio": [
+        {
+          "source": "audio.mp3",
+          "role": "focus"
+        }
+      ]
+    }
+  ]
+}

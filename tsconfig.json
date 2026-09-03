@@ -7,7 +7,9 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    // bundler + ESNext: extensionless relative imports OK (tsx / modern tooling)
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "target": "es2022",
     "lib": ["esnext"],
     "types": ["node"],
@@ -38,7 +40,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
 
-    "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "resolveJsonModule": true,
   }

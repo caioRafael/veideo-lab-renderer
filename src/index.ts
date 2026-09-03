@@ -1,35 +1,36 @@
-import path from "node:path";
 import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  buildCommand,
+  formatFfmpegCommand,
+} from "./ffmpeg/buildCommand";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const inputPath = path.join(__dirname, "assets", "input.png");
-const audioPath = path.join(__dirname, "assets", "audio.mp3");
-const outputPath = path.join(__dirname, "assets", "output.mp4");
+const assetsDir = path.join(__dirname, "assets");
+const defaultCompositionPath = path.join(
+  __dirname,
+  "compositions",
+  "example.json",
+);
 
-fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+const compositionArg = process.argv
+  .slice(2)
+  .find((arg) => arg !== "--");
 
-const ffmpeg = spawn("ffmpeg", [
-  "-y",
-  "-loop",
-  "1",
-  "-i",
-  inputPath,
-  "-i",
-  audioPath,
-  "-vf",
-  "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-  "-c:v",
-  "libx264",
-  "-c:a",
-  "aac",
-  "-t",
-  "4",
-  "-pix_fmt",
-  "yuv420p",
-  outputPath,
-]);
+const compositionPath = path.resolve(
+  compositionArg ?? defaultCompositionPath,
+);
+const composition = JSON.parse(fs.readFileSync(compositionPath, "utf8"));
+const args = buildCommand({ composition, assetsDir });
+
+console.log("Composition:", compositionPath);
+console.log("FFmpeg command:");
+console.log(formatFfmpegCommand(args));
+console.log("");
+
+const ffmpeg = spawn("ffmpeg", args);
 
 ffmpeg.stdout.on("data", (data) => {
   console.log(data.toString());
@@ -41,4 +42,5 @@ ffmpeg.stderr.on("data", (data) => {
 
 ffmpeg.on("close", (code) => {
   console.log(`FFmpeg process exited with code ${code}`);
+  process.exitCode = code ?? 1;
 });
