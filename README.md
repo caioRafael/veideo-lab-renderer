@@ -2,16 +2,17 @@
 
 Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
 
-Você descreve cenas (imagem/vídeo) e áudios (globais ou por cena); o projeto valida a composição, resolve as mídias, monta um plano de render e gera o MP4.
+Você descreve cenas (imagem/vídeo), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
 
 ## Requisitos
 
 - Node.js
 - [pnpm](https://pnpm.io)
 - FFmpeg instalado no sistema (`ffmpeg` no PATH)
+- Para `drawtext` nativo: FFmpeg compilado com libfreetype. Sem isso, o engine rasteriza o texto e aplica como overlay.
 
 ```bash
-# macOS (Homebrew)
+# macOS (Homebrew) — o formula padrão pode não incluir drawtext
 brew install ffmpeg
 ```
 
@@ -38,6 +39,7 @@ pnpm dev -- compositions/scenes-with-audio.json
 pnpm dev -- compositions/background-and-scene-audio.json
 pnpm dev -- compositions/texts.json
 pnpm dev -- compositions/overlay.json
+pnpm dev -- compositions/text-and-overlay.json
 pnpm dev -- compositions/full-timeline.json
 ```
 
@@ -97,6 +99,10 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | `width` | `1920` |
 | `height` | `1080` |
 | `fps` | `25` |
+| `texts[].start` | `0` |
+| `texts[].x` / `y` | `center` |
+| `texts[].fontSize` | `48` |
+| `texts[].color` | `#FFFFFF` |
 
 ### Cenas (`scenes`)
 
@@ -159,6 +165,8 @@ Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados
 | `overlays[].start` / `duration` | posição absoluta na timeline |
 | `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
 
+Camadas, de baixo para cima: vídeo → overlays de imagem → texto.
+
 ### Exemplos prontos
 
 - `compositions/example.json` — áudios globais na timeline
@@ -178,7 +186,7 @@ CompositionParser
  ↓
 Renderer
  ↓
-RenderPlan
+RenderPlan (tracks)
  ↓
 FfmpegCommandBuilder
  ↓
@@ -187,14 +195,26 @@ FfmpegExecutor
 FFmpeg
 ```
 
+O `RenderPlan` é uma timeline de tracks independentes:
+
+```text
+Video Track     cenas em sequência
+Audio Track     clips com start absoluto
+Overlay Track   imagens sobrepostas
+Text Track      drawtext (ou PNG rasterizado)
+```
+
 O CLI só lê a composição e dispara o renderer. O `Renderer` orquestra as peças especializadas:
 
 ```text
 Renderer
  ├── MediaResolver
+ ├── FontResolver
  ├── AudioTimeline
  ├── VideoFilter
  ├── AudioFilter
+ ├── OverlayFilter
+ ├── TextFilter
  ├── FfmpegCommandBuilder
  └── FfmpegExecutor
 ```
@@ -209,10 +229,11 @@ input/
 output/
   videos/                 # MP4s gerados
 compositions/             # JSONs de composição
+scripts/                  # fallback de texto (Swift) sem drawtext
 src/
   cli/                    # entrada da aplicação
   composition/            # parser e timeline de áudio
-  media/                  # resolução de arquivos
+  media/                  # resolução de arquivos e fontes
   renderer/               # orquestração e RenderPlan
   ffmpeg/                 # filtros, comando e executor
   interfaces/             # tipagens de domínio
