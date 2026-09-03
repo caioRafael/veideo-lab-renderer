@@ -2,7 +2,7 @@
 
 Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
 
-Você descreve cenas (imagem/vídeo) e áudios (globais ou por cena); o projeto monta o comando FFmpeg e gera o MP4.
+Você descreve cenas (imagem/vídeo) e áudios (globais ou por cena); o projeto valida a composição, resolve as mídias, monta um plano de render e gera o MP4.
 
 ## Requisitos
 
@@ -42,14 +42,15 @@ A saída padrão é `output/videos/output.mp4`.
 
 Antes de renderizar, o programa imprime o comando FFmpeg montado.
 
-## Lint
+## Lint e testes
 
 ```bash
 pnpm lint
 pnpm lint:fix
+pnpm test
 ```
 
-O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier).
+O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier). Os testes unitários usam o runner nativo do Node (`node:test`) via `tsx`.
 
 ## Composição JSON
 
@@ -85,6 +86,15 @@ Os `source` são só o nome do arquivo. A pasta é inferida pelo tipo:
 | áudio | `input/audios/` |
 | `output` | `output/videos/` |
 
+Defaults aplicados pelo parser quando o campo não vem no JSON:
+
+| Campo | Default |
+|---|---|
+| `output` | `output.mp4` |
+| `width` | `1920` |
+| `height` | `1080` |
+| `fps` | `25` |
+
 ### Cenas (`scenes`)
 
 | Campo | Descrição |
@@ -112,21 +122,53 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 - `compositions/scenes-with-audio.json` — áudio dentro de cada cena
 - `compositions/background-and-scene-audio.json` — background global + focus na cena
 
+## Arquitetura
+
+```text
+CLI
+ ↓
+CompositionParser
+ ↓
+Renderer
+ ↓
+RenderPlan
+ ↓
+FfmpegCommandBuilder
+ ↓
+FfmpegExecutor
+ ↓
+FFmpeg
+```
+
+O CLI só lê a composição e dispara o renderer. O `Renderer` orquestra as peças especializadas:
+
+```text
+Renderer
+ ├── MediaResolver
+ ├── AudioTimeline
+ ├── VideoFilter
+ ├── AudioFilter
+ ├── FfmpegCommandBuilder
+ └── FfmpegExecutor
+```
+
 ## Estrutura
 
 ```text
 input/
-  images/           # imagens das cenas
-  audios/           # áudios
-  videos/           # vídeos de cena
+  images/                 # imagens das cenas
+  audios/                 # áudios
+  videos/                 # vídeos de cena
 output/
-  videos/           # MP4s gerados
-compositions/       # JSONs de composição
+  videos/                 # MP4s gerados
+compositions/             # JSONs de composição
 src/
-  interfaces/       # tipagens
-  ffmpeg/
-    buildCommand.ts # JSON → args do FFmpeg
-  index.ts          # entrada (lê JSON e executa)
+  cli/                    # entrada da aplicação
+  composition/            # parser e timeline de áudio
+  media/                  # resolução de arquivos
+  renderer/               # orquestração e RenderPlan
+  ffmpeg/                 # filtros, comando e executor
+  interfaces/             # tipagens de domínio
 ```
 
 ## Documentação
