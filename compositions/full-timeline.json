@@ -47,7 +47,9 @@
       "x": "center",
       "y": 140,
       "fontSize": 72,
-      "color": "#FFFFFF"
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
     },
     {
       "content": "Narração na cena 2",
@@ -56,7 +58,9 @@
       "x": "center",
       "y": 920,
       "fontSize": 40,
-      "color": "#FFFFFF"
+      "color": "#FFFFFF",
+      "font": "Georgia",
+      "italic": true
     },
     {
       "content": "Logo + encerramento",

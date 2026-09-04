@@ -27,6 +27,7 @@ Coloque as mídias nas pastas de `input/`:
 - imagens → `input/images/`
 - áudios → `input/audios/`
 - vídeos de cena → `input/videos/`
+- fontes (opcional) → `input/fonts/`
 
 ## Uso
 
@@ -89,6 +90,7 @@ Os `source` são só o nome do arquivo. A pasta é inferida pelo tipo:
 | `image` | `input/images/` |
 | `video` | `input/videos/` |
 | áudio | `input/audios/` |
+| fonte | `input/fonts/` (ou fonte do sistema) |
 | `output` | `output/videos/` |
 
 Defaults aplicados pelo parser quando o campo não vem no JSON:
@@ -139,7 +141,9 @@ Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados
       "x": "center",
       "y": 140,
       "fontSize": 72,
-      "color": "#FFFFFF"
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
     }
   ],
   "overlays": [
@@ -161,6 +165,10 @@ Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados
 | `texts[].content` | texto exibido |
 | `texts[].start` / `duration` | posição absoluta na timeline |
 | `texts[].x` / `y` | posição (`center` ou pixel) |
+| `texts[].fontSize` | tamanho da fonte |
+| `texts[].color` | cor (`#FFFFFF` ou nome) |
+| `texts[].font` | família do sistema (`Arial`) ou arquivo (`Custom.ttf` em `input/fonts/`) |
+| `texts[].bold` / `italic` | variante da fonte |
 | `overlays[].source` | imagem em `input/images/` |
 | `overlays[].start` / `duration` | posição absoluta na timeline |
 | `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
@@ -226,6 +234,7 @@ input/
   images/                 # imagens das cenas
   audios/                 # áudios
   videos/                 # vídeos de cena
+  fonts/                  # TTFs opcionais dos textos
 output/
   videos/                 # MP4s gerados
 compositions/             # JSONs de composição

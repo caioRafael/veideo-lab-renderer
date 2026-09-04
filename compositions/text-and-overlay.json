@@ -26,7 +26,9 @@
       "x": "center",
       "y": 120,
       "fontSize": 64,
-      "color": "#FFFFFF"
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
     },
     {
       "content": "Com overlay",
