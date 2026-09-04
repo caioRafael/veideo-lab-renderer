@@ -45,6 +45,9 @@ pnpm dev -- compositions/full-timeline.json
 pnpm dev -- compositions/video-and-photos.json
 pnpm dev -- compositions/video-timeline.json
 pnpm dev -- compositions/video-photos.json
+pnpm dev -- compositions/fade.json
+pnpm dev -- compositions/crossfade.json
+pnpm dev -- compositions/crossfade-image-video.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
@@ -119,6 +122,7 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | `duration` | duração em segundos |
 | `audio` | (opcional) áudios extras da cena |
 | `keepAudio` | (vídeo) mantém o áudio original do arquivo |
+| `transition` | transição **a partir da cena anterior** (`fade` ou `crossfade`) |
 
 ### Áudio
 
@@ -180,6 +184,27 @@ Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados
 
 Camadas, de baixo para cima: vídeo → overlays de imagem → texto.
 
+### Transições
+
+A transição é declarada na **cena de destino** e descreve o corte entre a cena anterior e ela.
+
+```json
+{
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 5 },
+    {
+      "type": "image", "source": "input.png", "duration": 5,
+      "transition": { "type": "crossfade", "duration": 1 }
+    }
+  ]
+}
+```
+
+- `fade` — a cena anterior some para preto e a próxima nasce do preto (`A → black → B`). As cenas não se sobrepõem; a duração total continua a soma das cenas.
+- `crossfade` — as duas cenas se misturam. Com 5s + 5s e 1s de crossfade, o MP4 dura **9s** (`B.start = 4`).
+
+A primeira cena não pode ter `transition`. A duração tem que ser menor que as duas cenas adjacentes. Só o Video Track é afetado; áudio, texto e overlay seguem a própria timeline.
+
 ### Exemplos prontos
 
 - `compositions/example.json` — áudios globais na timeline
@@ -192,6 +217,9 @@ Camadas, de baixo para cima: vídeo → overlays de imagem → texto.
 - `compositions/video-and-photos.json` — foto, clipe de vídeo e foto, com áudio e textos
 - `compositions/video-timeline.json` — vídeo, fotos, áudio global/cena, texto e overlay
 - `compositions/video-photos.json` — fotos e vídeo, com o áudio original do clipe
+- `compositions/fade.json` — foto → preto → foto
+- `compositions/crossfade.json` — dissolução de 1s entre duas fotos
+- `compositions/crossfade-image-video.json` — foto → clipe de vídeo
 
 ## Arquitetura
 

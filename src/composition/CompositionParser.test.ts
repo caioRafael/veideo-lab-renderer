@@ -355,4 +355,164 @@ describe('CompositionParser', () => {
       /audio\[0\].start: expected a value within the scene duration \(4s\)/,
     )
   })
+
+  it('parses a valid crossfade on the destination scene', () => {
+    const composition = parser.parse({
+      scenes: [
+        validScene,
+        {
+          ...validScene,
+          source: 'next.png',
+          transition: { type: 'crossfade', duration: 1 },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[1]?.transition, {
+      type: 'crossfade',
+      duration: 1,
+    })
+  })
+
+  it('parses a valid fade on the destination scene', () => {
+    const composition = parser.parse({
+      scenes: [
+        validScene,
+        {
+          ...validScene,
+          source: 'next.png',
+          transition: { type: 'fade', duration: 0.5 },
+        },
+      ],
+    })
+
+    assert.equal(composition.scenes[1]?.transition?.type, 'fade')
+    assert.equal(composition.scenes[1]?.transition?.duration, 0.5)
+  })
+
+  it('rejects an invalid transition type', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            {
+              ...validScene,
+              transition: { type: 'zoom', duration: 1 },
+            },
+          ],
+        }),
+      /transition.type: expected "fade" or "crossfade"/,
+    )
+  })
+
+  it('rejects an invalid transition duration', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            { ...validScene, transition: { type: 'fade', duration: 0 } },
+          ],
+        }),
+      /transition.duration: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            { ...validScene, transition: { type: 'fade', duration: -1 } },
+          ],
+        }),
+      /transition.duration: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            { ...validScene, transition: { type: 'fade', duration: NaN } },
+          ],
+        }),
+      /transition.duration: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            {
+              ...validScene,
+              transition: { type: 'fade', duration: Infinity },
+            },
+          ],
+        }),
+      /transition.duration: expected a value greater than 0/,
+    )
+  })
+
+  it('rejects a transition on the first scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transition: { type: 'crossfade', duration: 1 },
+            },
+          ],
+        }),
+      /the first scene cannot have a transition/,
+    )
+  })
+
+  it('rejects a transition longer than an adjacent scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            { ...validScene, duration: 1 },
+            {
+              ...validScene,
+              duration: 5,
+              transition: { type: 'crossfade', duration: 2 },
+            },
+          ],
+        }),
+      /expected a duration smaller than both adjacent scenes/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            validScene,
+            {
+              ...validScene,
+              duration: 1,
+              transition: { type: 'crossfade', duration: 1 },
+            },
+          ],
+        }),
+      /expected a duration smaller than both adjacent scenes/,
+    )
+  })
+
+  it('rejects texts that start after a crossfade shortens the timeline', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            { ...validScene, duration: 5 },
+            {
+              ...validScene,
+              duration: 5,
+              transition: { type: 'crossfade', duration: 1 },
+            },
+          ],
+          texts: [{ content: 'Late', start: 9, duration: 1 }],
+        }),
+      /composition duration \(9s\)/,
+    )
+  })
 })

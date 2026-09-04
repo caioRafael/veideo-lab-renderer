@@ -3,7 +3,9 @@ import type { Composition } from '../interfaces/composition'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
 import type { PositionValue, TextClip } from '../interfaces/text'
+import type { Transition, TransitionType } from '../interfaces/transition'
 import { COMPOSITION_DEFAULTS } from './defaults'
+import { visualDuration } from './visualDuration'
 
 export class CompositionParser {
   parse(value: unknown): Composition {
@@ -63,6 +65,7 @@ export class CompositionParser {
       )
     }
 
+    this.assertTransitions(composition)
     this.assertItemsFitTimeline(composition)
 
     return composition
@@ -97,6 +100,13 @@ export class CompositionParser {
       scene.keepAudio = this.parseBoolean(value.keepAudio, `${label}.keepAudio`)
     }
 
+    if (value.transition !== undefined) {
+      scene.transition = this.parseTransition(
+        value.transition,
+        `${label}.transition`,
+      )
+    }
+
     if (value.audio !== undefined) {
       if (!Array.isArray(value.audio)) {
         throw this.invalid(`${label}.audio`, 'expected an array')
@@ -117,6 +127,53 @@ export class CompositionParser {
     }
 
     return scene
+  }
+
+  private parseTransition(value: unknown, label: string): Transition {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    if (!this.isTransitionType(value.type)) {
+      throw this.invalid(`${label}.type`, 'expected "fade" or "crossfade"')
+    }
+
+    return {
+      type: value.type,
+      duration: this.parseRequiredPositiveNumber(
+        value.duration,
+        `${label}.duration`,
+      ),
+    }
+  }
+
+  private assertTransitions(composition: Composition): void {
+    for (const [index, scene] of composition.scenes.entries()) {
+      if (scene.transition === undefined) {
+        continue
+      }
+
+      if (index === 0) {
+        throw new Error(
+          'Invalid transition: the first scene cannot have a transition.',
+        )
+      }
+
+      const previous = composition.scenes[index - 1]
+      if (previous === undefined) {
+        continue
+      }
+
+      if (
+        scene.transition.duration >= previous.duration ||
+        scene.transition.duration >= scene.duration
+      ) {
+        throw this.invalid(
+          `scenes[${index}].transition.duration`,
+          'expected a duration smaller than both adjacent scenes',
+        )
+      }
+    }
   }
 
   private parseAudioClip(value: unknown, label: string): AudioClip {
@@ -318,10 +375,7 @@ export class CompositionParser {
   }
 
   private assertItemsFitTimeline(composition: Composition): void {
-    const duration = composition.scenes.reduce(
-      (sum, scene) => sum + scene.duration,
-      0,
-    )
+    const duration = visualDuration(composition.scenes)
 
     for (const [index, clip] of (composition.audio ?? []).entries()) {
       if (clip.start !== undefined && clip.start >= duration) {
@@ -369,5 +423,9 @@ export class CompositionParser {
 
   private isSceneType(value: unknown): value is SceneType {
     return value === 'image' || value === 'video'
+  }
+
+  private isTransitionType(value: unknown): value is TransitionType {
+    return value === 'fade' || value === 'crossfade'
   }
 }

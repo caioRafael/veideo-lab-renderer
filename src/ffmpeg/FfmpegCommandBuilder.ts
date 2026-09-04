@@ -60,7 +60,13 @@ export class FfmpegCommandBuilder {
 
     const hasVisualLayers = overlayItems.length > 0 || textItems.length > 0
     const concatLabel = hasVisualLayers ? 'vbase' : 'vout'
-    filterParts.push(videoFilter.concat(videoLabels, concatLabel))
+    this.pushVideoComposition(
+      filterParts,
+      videoFilter,
+      videoItems,
+      videoLabels,
+      concatLabel,
+    )
 
     this.pushOverlayFilters(
       filterParts,
@@ -111,6 +117,81 @@ export class FfmpegCommandBuilder {
     }
 
     args.push('-t', String(item.duration), '-i', item.source)
+  }
+
+  private pushVideoComposition(
+    filterParts: string[],
+    videoFilter: VideoFilter,
+    videoItems: VideoItem[],
+    videoLabels: string[],
+    outputLabel: string,
+  ): void {
+    const hasTransition = videoItems.some(
+      (item) => item.incomingTransition !== undefined,
+    )
+
+    if (!hasTransition) {
+      filterParts.push(videoFilter.concat(videoLabels, outputLabel))
+      return
+    }
+
+    const firstItem = videoItems[0]
+    if (firstItem === undefined) {
+      return
+    }
+
+    let currentLabel = 'v0'
+    let currentDuration = firstItem.duration
+
+    for (let index = 1; index < videoItems.length; index += 1) {
+      const item = videoItems[index]
+      if (item === undefined) {
+        continue
+      }
+
+      const isLast = index === videoItems.length - 1
+      const nextLabel = isLast ? outputLabel : `vx${index}`
+      const incoming = item.incomingTransition
+
+      if (incoming === undefined) {
+        filterParts.push(
+          videoFilter.concat([`[${currentLabel}]`, `[v${index}]`], nextLabel),
+        )
+        currentDuration += item.duration
+      } else if (incoming.type === 'crossfade') {
+        const offset = currentDuration - incoming.duration
+        filterParts.push(
+          videoFilter.xfade(
+            currentLabel,
+            `v${index}`,
+            nextLabel,
+            incoming.duration,
+            offset,
+          ),
+        )
+        currentDuration += item.duration - incoming.duration
+      } else {
+        const fadedOut = `fo${index}`
+        const fadedIn = `fi${index}`
+        filterParts.push(
+          videoFilter.fadeOut(
+            currentLabel,
+            fadedOut,
+            currentDuration - incoming.duration,
+            incoming.duration,
+          ),
+        )
+        filterParts.push(
+          videoFilter.fadeIn(`v${index}`, fadedIn, incoming.duration),
+        )
+        filterParts.push(
+          videoFilter.concat([`[${fadedOut}]`, `[${fadedIn}]`], nextLabel),
+        )
+        currentDuration += item.duration
+      }
+
+      currentLabel = nextLabel
+    }
   }
 
   private pushOverlayFilters(

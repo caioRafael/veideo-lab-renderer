@@ -335,4 +335,76 @@ describe('FfmpegCommandBuilder', () => {
     assert.match(filterComplex, /text='Hello World'/)
     assert.match(filterComplex, /enable='between\(t,2,7\)'/)
   })
+
+  it('applies xfade with the overlap offset', () => {
+    const args = builder.build(
+      planWith({
+        duration: 9,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 4,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /settb=AVTB/)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=4\[vout\]/,
+    )
+    assert.equal(filterComplex.includes('concat='), false)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '9')
+  })
+
+  it('applies fade to black then concat', () => {
+    const args = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 5,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'fade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /fade=t=out:st=4:d=1:c=black\[fo1\]/)
+    assert.match(filterComplex, /fade=t=in:st=0:d=1:c=black\[fi1\]/)
+    assert.match(filterComplex, /\[fo1\]\[fi1\]concat=n=2:v=1:a=0\[vout\]/)
+    assert.equal(filterComplex.includes('xfade='), false)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '10')
+  })
 })

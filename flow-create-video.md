@@ -181,3 +181,5 @@ pnpm dev -- compositions/video-photos.json
 ```
 
 A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
+
+Transições (`fade` / `crossfade`) são declaradas na cena de destino. Ver [README](README.md#transições).

@@ -1,5 +1,6 @@
 import type { SceneType } from './scene'
 import type { PositionValue } from './text'
+import type { Transition } from './transition'
 
 export type RenderTrackType = 'video' | 'audio' | 'overlay' | 'text'
 
@@ -12,6 +13,7 @@ export interface RenderItem {
 
 export interface VideoItem extends RenderItem {
   mediaType: SceneType
+  incomingTransition?: Transition
 }
 
 export interface AudioItem extends RenderItem {

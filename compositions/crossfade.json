@@ -1,0 +1,18 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 5 },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 5,
+      "transition": {
+        "type": "crossfade",
+        "duration": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 5 },
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 8,
+      "keepAudio": true,
+      "transition": {
+        "type": "crossfade",
+        "duration": 1
+      }
+    }
+  ]
+}

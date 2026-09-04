@@ -1,4 +1,5 @@
 import { AudioTimeline } from '../composition/AudioTimeline'
+import { visualDuration } from '../composition/visualDuration'
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { Composition } from '../interfaces/composition'
 import type {
@@ -21,10 +22,7 @@ export function buildRenderPlan(
   audioTimeline: AudioTimeline = new AudioTimeline(),
   fontResolver: FontResolver = new FontResolver(),
 ): RenderPlan {
-  const duration = composition.scenes.reduce(
-    (sum, scene) => sum + scene.duration,
-    0,
-  )
+  const duration = visualDuration(composition.scenes)
 
   const videoTrack = createVideoTrack(composition, mediaResolver)
   const tracks = [
@@ -33,6 +31,7 @@ export function buildRenderPlan(
       audioTimeline.collect(composition, duration),
       mediaResolver,
       composition,
+      videoTrack,
     ),
     ...createOverlayTracks(composition, mediaResolver),
     ...createTextTracks(composition, fontResolver),
@@ -53,17 +52,28 @@ function createVideoTrack(
   mediaResolver: MediaResolver,
 ): VideoTrack {
   const items: VideoItem[] = []
-  let start = 0
+  let cursor = 0
 
   for (const [index, scene] of composition.scenes.entries()) {
-    items.push({
+    const start =
+      scene.transition?.type === 'crossfade'
+        ? cursor - scene.transition.duration
+        : cursor
+
+    const item: VideoItem = {
       id: `video-${index}`,
       source: mediaResolver.resolveSceneSource(scene),
       start,
       duration: scene.duration,
       mediaType: scene.type,
-    })
-    start += scene.duration
+    }
+
+    if (scene.transition !== undefined) {
+      item.incomingTransition = scene.transition
+    }
+
+    items.push(item)
+    cursor = start + scene.duration
   }
 
   return {
@@ -77,9 +87,10 @@ function createAudioTracks(
   clips: AbsoluteAudio[],
   mediaResolver: MediaResolver,
   composition: Composition,
+  videoTrack: VideoTrack,
 ): AudioTrack[] {
   const items: AudioItem[] = [
-    ...createVideoSceneAudio(composition, mediaResolver),
+    ...createVideoSceneAudio(composition, videoTrack),
     ...clips.map((clip, index) => ({
       id: `audio-${index}`,
       source: mediaResolver.resolveAudio(clip.source),
@@ -104,25 +115,29 @@ function createAudioTracks(
 
 function createVideoSceneAudio(
   composition: Composition,
-  mediaResolver: MediaResolver,
+  videoTrack: VideoTrack,
 ): AudioItem[] {
   const items: AudioItem[] = []
-  let start = 0
   let index = 0
 
-  for (const scene of composition.scenes) {
-    if (scene.type === 'video' && scene.keepAudio === true) {
-      items.push({
-        id: `audio-video-${index}`,
-        source: mediaResolver.resolveSceneSource(scene),
-        start,
-        duration: scene.duration,
-        volume: 1,
-      })
-      index += 1
+  for (const [sceneIndex, scene] of composition.scenes.entries()) {
+    if (scene.type !== 'video' || scene.keepAudio !== true) {
+      continue
     }
 
-    start += scene.duration
+    const videoItem = videoTrack.items[sceneIndex]
+    if (videoItem === undefined) {
+      continue
+    }
+
+    items.push({
+      id: `audio-video-${index}`,
+      source: videoItem.source,
+      start: videoItem.start,
+      duration: videoItem.duration,
+      volume: 1,
+    })
+    index += 1
   }
 
   return items

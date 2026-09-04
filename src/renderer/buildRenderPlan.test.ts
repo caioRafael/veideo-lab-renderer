@@ -354,4 +354,78 @@ describe('buildRenderPlan', () => {
         (items[1]?.start ?? 0),
     )
   })
+
+  it('keeps sequential starts when there is no transition', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          { type: 'image', source: 'b.png', duration: 5 },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getVideoTrack(plan)?.items ?? []
+    assert.equal(plan.duration, 10)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[1]?.start, 5)
+    assert.equal(items[1]?.incomingTransition, undefined)
+  })
+
+  it('places a fade without overlapping scenes', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'image',
+            source: 'b.png',
+            duration: 5,
+            transition: { type: 'fade', duration: 1 },
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getVideoTrack(plan)?.items ?? []
+    assert.equal(plan.duration, 10)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[0]?.duration, 5)
+    assert.equal(items[1]?.start, 5)
+    assert.equal(items[1]?.duration, 5)
+    assert.deepEqual(items[1]?.incomingTransition, {
+      type: 'fade',
+      duration: 1,
+    })
+  })
+
+  it('overlaps scenes when the destination has a crossfade', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'image',
+            source: 'b.png',
+            duration: 5,
+            transition: { type: 'crossfade', duration: 1 },
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getVideoTrack(plan)?.items ?? []
+    assert.equal(plan.duration, 9)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[0]?.duration, 5)
+    assert.equal(items[1]?.start, 4)
+    assert.equal(items[1]?.duration, 5)
+    assert.deepEqual(items[1]?.incomingTransition, {
+      type: 'crossfade',
+      duration: 1,
+    })
+  })
 })
