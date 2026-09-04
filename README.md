@@ -55,9 +55,18 @@ pnpm dev -- compositions/transform-combined.json
 pnpm dev -- compositions/transform-video.json
 pnpm dev -- compositions/transform-with-crossfade.json
 pnpm dev -- compositions/animated-scale.json
+pnpm dev -- compositions/animated-pan.json
+pnpm dev -- compositions/animated-position.json
+pnpm dev -- compositions/animated-zoom.json
 pnpm dev -- compositions/ken-burns.json
 pnpm dev -- compositions/animated-video.json
 pnpm dev -- compositions/animated-with-crossfade.json
+pnpm dev -- compositions/animated-with-fade.json
+pnpm dev -- compositions/easing-linear.json
+pnpm dev -- compositions/easing-in.json
+pnpm dev -- compositions/easing-out.json
+pnpm dev -- compositions/easing-in-out.json
+pnpm dev -- compositions/easing-ken-burns.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
@@ -129,15 +138,44 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 |---|---|
 | `type` | `image` ou `video` |
 | `source` | nome do arquivo na pasta correspondente |
-| `duration` | duração em segundos |
+| `duration` | duração da cena na timeline global, em segundos |
+| `mediaStart` | (vídeo) offset no arquivo de origem, em segundos. Default `0`. Inválido em `image` |
+| `shortMedia` | (vídeo) o que fazer se a mídia disponível for menor que a cena: `error` (default), `loop` ou `freeze`. Inválido em `image` |
 | `audio` | (opcional) áudios extras da cena |
 | `keepAudio` | (vídeo) mantém o áudio original do arquivo |
 | `transition` | transição **a partir da cena anterior** (`fade` ou `crossfade`) |
 | `transform` | transformação visual da mídia da cena (estática ou animada) |
 
+A posição da cena na composição (`scenePlacements`) é independente do ponto de leitura do arquivo:
+
+```text
+Timeline da composição  ≠  Timeline da mídia
+```
+
+```json
+{
+  "type": "video",
+  "source": "gloria-eterna.mp4",
+  "duration": 5,
+  "mediaStart": 20
+}
+```
+
+A cena ocupa 5s na timeline global e lê `media[20s → 25s)`. `mediaStart` não move a cena, não altera o total da composição e não muda o tempo da animação nem da transição.
+
+Se a mídia restante for menor que `duration`:
+
+| `shortMedia` | Comportamento |
+|---|---|
+| `error` (default) | o engine rejeita antes do FFmpeg, com source, mediaStart, duração pedida e disponível |
+| `loop` | o trecho `[mediaStart, EOF)` se repete **dentro** da cena |
+| `freeze` | o último frame permanece até o fim da cena |
+
+Uma composition antiga sem esses campos continua significando `mediaStart = 0` e `shortMedia = error`. `keepAudio` e áudio de cena seguem a timeline da cena; `mediaStart` não atrasa o áudio.
+
 ### Transformações
 
-`transform` descreve a intenção visual da mídia da cena. Não afeta áudio, texto nem overlay. `crop` é sempre estático. `scale`, `zoom`, `x`/`y` e `pan` aceitam um número (estático) ou `{ from, to }` (animação linear ao longo da duração da cena).
+`transform` descreve a intenção visual da mídia da cena. Não afeta áudio, texto nem overlay. `crop` é sempre estático. `scale`, `zoom`, `x`/`y` e `pan` aceitam um número (estático) ou `{ from, to }` (animação ao longo da duração da cena). O campo opcional `easing` altera só a progressão entre `from` e `to`. Sem `easing`, a interpolação é `linear`. Não há keyframes.
 
 Estático:
 
@@ -156,26 +194,40 @@ Animado (Ken Burns):
 ```json
 {
   "transform": {
-    "scale": { "from": 1, "to": 1.18 },
+    "scale": { "from": 1, "to": 1.18, "easing": "ease-in-out" },
     "pan": {
       "from": { "x": -80, "y": 20 },
-      "to": { "x": 100, "y": -30 }
+      "to": { "x": 100, "y": -30 },
+      "easing": "ease-out"
     }
   }
 }
 ```
 
-A animação começa em `from`, termina em `to`, interpola linearmente e ocupa a duração da cena. Não há easing nem keyframes. `t` é limitado a `[0, duration]`.
+A animação começa em `from`, termina em `to` e ocupa a duração da cena. `t` é limitado a `[0, duration]`. Depois o easing remapeia esse `t` normalizado:
+
+| `easing` | Curva | Comportamento |
+|---|---|---|
+| `linear` (default) | `t` | velocidade constante |
+| `ease-in` | `t²` | começa devagar, termina rápido |
+| `ease-out` | `1 - (1 - t)²` | começa rápido, termina devagar |
+| `ease-in-out` | quadrática por partes | devagar → rápido → devagar |
+
+Cada campo animado tem a própria curva. `x` e `y` são independentes. No `pan` `{ from, to }`, um `easing` vale para os dois eixos.
+
+```text
+value(t) = from + (to - from) * easing(t_norm)
+```
 
 | Campo | Semântica |
 |---|---|
-| `scale` | multiplicador de tamanho. `1` = tamanho após o fit no canvas. Número ou `{ from, to }` (`from`/`to` > 0) |
+| `scale` | multiplicador de tamanho. `1` = tamanho após o fit no canvas. Número ou `{ from, to, easing? }` (`from`/`to` > 0) |
 | `zoom` | o mesmo multiplicador que `scale`. Se os dois existirem: `scale(t) * zoom(t)` em cada instante |
-| `x` / `y` | deslocamento em pixels **a partir do centro do canvas**. Número ou `{ from, to }`. `x > 0` direita, `y > 0` baixo |
-| `pan` | o mesmo deslocamento que `x`/`y`. Estático: `{ x, y }`. Animado: `{ from: { x, y }, to: { x, y } }`. Se coexistir com `x`/`y`, os valores **somam** |
+| `x` / `y` | deslocamento em pixels **a partir do centro do canvas**. Número ou `{ from, to, easing? }`. `x > 0` direita, `y > 0` baixo |
+| `pan` | o mesmo deslocamento que `x`/`y`. Estático: `{ x, y }`. Animado: `{ from: { x, y }, to: { x, y }, easing? }`. Se coexistir com `x`/`y`, os valores **somam** |
 | `crop` | recorte **estático** em pixels da mídia de origem |
 
-`zoom` ≡ `scale` e `pan` ≡ `x`/`y`, como na Fase 3. A interpolação de `scale * zoom` é o produto das duas retas, não o lerp do produto. `position + pan` somam porque lerp é linear.
+`zoom` ≡ `scale` e `pan` ≡ `x`/`y`. A interpolação de `scale * zoom` é o produto das duas curvas, não o lerp do produto. `position + pan` somam depois de cada um aplicar o próprio easing.
 
 Ordem aplicada:
 
@@ -197,7 +249,9 @@ transition
 
 Exemplos estáticos: `compositions/transform-scale.json`, `transform-position.json`, `transform-crop.json`, `transform-combined.json`, `transform-video.json`, `transform-with-crossfade.json`.
 
-Exemplos animados: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`.
+Exemplos animados: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`, `animated-with-fade.json`.
+
+Exemplos de easing: `compositions/easing-linear.json`, `easing-in.json`, `easing-out.json`, `easing-in-out.json`, `easing-ken-burns.json`.
 
 ### Áudio
 
@@ -207,7 +261,7 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 |---|---|
 | `source` | nome do arquivo em `input/audios/` |
 | `role` | `background` (vol. 0.3) ou `focus` (vol. 1.0) |
-| `start` | início na timeline (absoluto no global; relativo à cena no local) |
+| `start` | início na timeline (absoluto no global; relativo ao **início visual** da cena no local, inclusive no overlap do crossfade) |
 | `duration` | (opcional) duração do trecho |
 | `volume` | (opcional) sobrescreve o volume do `role` |
 
@@ -283,7 +337,7 @@ A transição é declarada na **cena de destino** e descreve o corte entre a cen
 | `fade` | A → preto → B | 10s | `fade=t=out` + `fade=t=in` + `concat` |
 | `crossfade` | mistura A e B | 9s | `settb=AVTB` + `xfade` |
 
-A primeira cena não pode ter `transition`. A duração tem que ser **estritamente menor** que as duas cenas adjacentes. Só o Video Track é afetado; áudio, texto e overlay seguem a própria timeline (absoluta). `keepAudio` acompanha o start visual da cena, inclusive no overlap do crossfade.
+A primeira cena não pode ter `transition`. A duração tem que ser **estritamente menor** que as duas cenas adjacentes. Só o Video Track é afetado; texto e overlay seguem a própria timeline absoluta. Áudio de cena e `keepAudio` usam o **início visual** da cena (no crossfade, entram no overlap).
 
 A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan guarda `incomingTransition` (`type` + `duration`), sem sintaxe FFmpeg. Detalhes do filter graph: [ffmpeg-guide.md](ffmpeg-guide.md).
 
@@ -315,6 +369,29 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - `compositions/ken-burns.json` — scale + pan simultâneos, com áudio
 - `compositions/animated-video.json` — clipe com scale/pan animados
 - `compositions/animated-with-crossfade.json` — transform animado + crossfade
+- `compositions/animated-with-fade.json` — transform animado + fade
+- `compositions/easing-linear.json` — scale 1 → 1.5, velocidade constante
+- `compositions/easing-in.json` — scale 1 → 1.5, começa devagar
+- `compositions/easing-out.json` — scale 1 → 1.5, termina devagar
+- `compositions/easing-in-out.json` — scale 1 → 1.5, aceleração no meio
+- `compositions/easing-ken-burns.json` — scale ease-in-out + pan ease-out
+- `compositions/media-trim.json` — lê 5s a partir de `mediaStart: 20`
+- `compositions/media-offset.json` — começa o arquivo em 45s
+- `compositions/media-loop.json` — mídia curta repetida dentro da cena
+- `compositions/media-freeze.json` — último frame até o fim da cena
+- `compositions/media-trim-crossfade.json` — `mediaStart` em B sem mover o crossfade
+- `compositions/media-trim-animated.json` — trim + scale/x animados na duração da cena
+
+## Limitações conhecidas
+
+- Não há keyframes: cada campo animado tem só `from` → `to` e uma curva (`linear`, `ease-in`, `ease-out`, `ease-in-out`).
+- O último frame da animação cai em `t ≈ duration - 1/fps`, não exatamente em `t = duration`. A expressão FFmpeg chega em `to` quando `t = duration`.
+- `crop` não é conferido contra a resolução real do arquivo (o probe lê só a duração).
+- `mediaStart` além do fim do arquivo e `shortMedia: error` com mídia curta são validados com `ffprobe` da duração do container. Sem duração legível, o render falha com mensagem clara.
+- Inputs de imagem usam o framerate padrão do demuxer `image2` (25). Composições com `fps` diferente dependem do filtro `fps` na normalização.
+- Fade visual não insere um segmento extra de preto: 5s + 5s com fade de 1s continua durando **10s**.
+- Áudio não faz crossfade; no overlap visual, `keepAudio` e áudio de cena podem se misturar no `amix`.
+- `keepAudio` e áudio de cena não herdam `mediaStart` do vídeo.
 
 ## Arquitetura
 

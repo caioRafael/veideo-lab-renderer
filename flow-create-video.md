@@ -64,9 +64,11 @@ Os `source` são só o nome do arquivo. A pasta vem do tipo:
 ### Cenas
 
 - `type`: `image` ou `video`
-- `source`, `duration`
+- `source`, `duration` (duração da cena na timeline global)
+- `mediaStart?`: só em `video`; offset no arquivo. Default `0`
+- `shortMedia?`: só em `video`; `error` (default), `loop` ou `freeze` quando a mídia não preenche a cena
 - `audio?`: áudios extras da cena (`start` relativo à cena)
-- `keepAudio?`: só em `video`; mantém a faixa original do arquivo
+- `keepAudio?`: só em `video`; mantém a faixa original do arquivo (timeline da cena, não de `mediaStart`)
 
 ### Áudio extra
 
@@ -103,11 +105,21 @@ Imagem:
 -loop 1 -t 4 -i input/images/flamengo.png
 ```
 
-Vídeo:
+Vídeo (sem offset):
 
 ```bash
 -t 8 -i input/videos/gloria-eterna.mp4
 ```
+
+Vídeo com `mediaStart` / `shortMedia`:
+
+```bash
+-ss 20 -t 5 -i input/videos/gloria-eterna.mp4          # trim
+-ss 164 -t 1.837 -i input/videos/gloria-eterna.mp4     # loop: lê o trecho disponível; split+concat no filtro
+-ss 164 -t 6 -i input/videos/gloria-eterna.mp4         # freeze (tpad no filtro)
+```
+
+Depois do seek, o filtro zera PTS (`setpts=PTS-STARTPTS`) para a cena começar em `t = 0`. Animação e transição usam a duração da cena, não o relógio do arquivo.
 
 ### 2. Transformar, padronizar e concatenar vídeo
 
@@ -122,10 +134,10 @@ Sem `transform` (ou só com `crop`), cada cena entra no canvas assim:
 
 Com `scale` / `zoom` / `x` / `y` / `pan`, o `pad` vira overlay no canvas preto — o frame final continua 1920×1080, `yuv420p`, mesmo FPS e SAR 1, para o `xfade` receber streams compatíveis.
 
-Valores estáticos (`scale: 1.2`) geram constantes no filtro. Valores animados (`scale: { from, to }`) viram expressões de `t` no FFmpeg (`lerp` linear, limitado a `[0, duration]`). O Node não gera um frame por instante.
+Valores estáticos (`scale: 1.2`) geram constantes no filtro. Valores animados (`scale: { from, to }`) viram expressões de `t` no FFmpeg. Sem `easing`, a curva é `linear`. Com `ease-in` / `ease-out` / `ease-in-out`, o `VideoFilter` traduz a curva para `pow` / `if` na expression; o Node não gera um frame por instante. O conteúdo passa por `setpts=PTS-STARTPTS` antes dessas expressões, para `t = 0` ser o primeiro frame.
 
 ```text
-input → crop → canvas fit → scale/zoom → position/pan → setsar/fps/format → transition
+input → mediaStart/trim → shortMedia (loop/freeze/error) → crop → canvas fit → scale/zoom → position/pan → easing → transition
 ```
 
 `x`/`y` (e `pan`) são deslocamento a partir do centro, em pixels do canvas.
@@ -140,7 +152,7 @@ Se houver overlay ou texto, o concat sai em `[vbase]` e as camadas seguintes ter
 
 Cada item da audio track vira `-i` + `atrim` / `adelay` / `volume` / `apad`. Vários itens entram em `amix`. Sem áudio, o builder usa `anullsrc`.
 
-`keepAudio: true` coloca a faixa do próprio MP4 na audio track, no `start` da cena.
+`keepAudio: true` coloca a faixa do próprio MP4 na audio track, no início **visual** da cena (com overlap no crossfade). Áudio declarado em `scenes[].audio` usa o mesmo início visual. `video.mediaStart` não atrasa esse áudio.
 
 ### 4. Overlays e textos
 
@@ -176,10 +188,10 @@ MP4
 ```
 
 ```text
-scenes image/video ─► Video Track ─► crop? ─► fit ─► transform ─► concat/xfade ─► [vbase]
-overlays            ─► Overlay Track ─► scale + overlay ─────────────────────────► [vout]
-texts               ─► Text Track ─► drawtext ou PNG overlay ────────────────────┘
-audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ─────────────────────────► [aout]
+scenes image/video ─► Video Track ─► media time ─► crop? ─► fit ─► transform ─► concat/xfade ─► [vbase]
+overlays            ─► Overlay Track ─► scale + overlay ────────────────────────────────────────► [vout]
+texts               ─► Text Track ─► drawtext ou PNG overlay ───────────────────────────────────┘
+audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ────────────────────────────────────────► [aout]
 ```
 
 ---
@@ -194,8 +206,13 @@ pnpm dev -- compositions/video-photos.json
 pnpm dev -- compositions/transform-scale.json
 pnpm dev -- compositions/transform-with-crossfade.json
 pnpm dev -- compositions/ken-burns.json
+pnpm dev -- compositions/easing-in-out.json
+pnpm dev -- compositions/animated-with-fade.json
+pnpm dev -- compositions/media-trim.json
+pnpm dev -- compositions/media-loop.json
+pnpm dev -- compositions/media-freeze.json
 ```
 
 A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
 
-Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`). Ver [README](README.md#transformações).
+Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Ver [README](README.md#transformações).

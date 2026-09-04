@@ -2010,9 +2010,15 @@ O `FfmpegCommandBuilder` monta **um** `-filter_complex` por render. Não há arq
 Ordem:
 
 ```text
-input (-loop 1 -t N para imagem; -t N para vídeo)
+input
+  imagem: -loop 1 -t N
+  vídeo:  -t N  |  -ss mediaStart -t N  |  loop: -ss mediaStart -t disponível
+  → setpts=PTS-STARTPTS quando mediaStart > 0, loop ou freeze
+  → loop: split+concat do trecho disponível (não usa -stream_loop com mediaStart)
+  → freeze: tpad=stop_mode=clone + trim=duration=N + setpts
   → crop? (pixels da mídia)
   → canvas fit (scale W:H force_original_aspect_ratio=decrease)
+  → setpts=PTS-STARTPTS (caminho com placement; alinha t ao canvas)
   → transform scale/zoom + position/pan (se houver)
   → pad no canvas  OU  overlay em color=black W×H
   → setsar + fps + format=yuv420p
@@ -2022,6 +2028,8 @@ input (-loop 1 -t N para imagem; -t N para vídeo)
   → áudio (atrim, adelay, amix ou anullsrc)
   → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURAÇÃO -pix_fmt yuv420p
 ```
+
+`mediaStart` é seek no arquivo (`-ss` antes de `-i`). Não entra no `xfade` offset nem em `scenePlacements`. Depois do seek, `setpts=PTS-STARTPTS` impede que o PTS original vaze para a timeline global. `shortMedia: error` (default) é validado no `Renderer` com `ffprobe` da duração do container — não há probe de resolução.
 
 Normalização de cada cena sem placement (`scale`/`zoom`/`x`/`y`/`pan`):
 
@@ -2035,7 +2043,7 @@ format=yuv420p
 
 Com placement, o `pad` é substituído por overlay no canvas preto. O frame que chega na transição continua W×H, SAR 1, fps F, yuv420p. `scale` da transformação (`iw*S:ih*S` ou expressão de `t`) não é o mesmo `scale` da normalização do canvas.
 
-Animação linear (`{ from, to }`) usa `t` do FFmpeg, com `min(max(if(isnan(t),0,t)/duration,0),1)`. Scale animado precisa de `eval=frame`. Dimensões animadas são forçadas a pares com `trunc(iw*…/2)*2`. O Node não gera frames intermediários.
+Animação (`{ from, to }`) usa `t` do FFmpeg, com `t_norm = min(max(if(isnan(t),0,t)/duration,0),1)`. Sem `easing` (ou `easing: "linear"`), a progressão é `t_norm`. As outras curvas viram expressions: `pow(t_norm,2)` (`ease-in`), `1-pow(1-t_norm,2)` (`ease-out`), `if(lt(t_norm,0.5),…)` (`ease-in-out`). Scale animado precisa de `eval=frame`. Dimensões animadas são forçadas a pares com `trunc(iw*…/2)*2`. `setpts=PTS-STARTPTS` no conteúdo faz `t = 0` no primeiro frame (necessário em vídeos cujo PTS não começa em 0). O Node não gera frames intermediários.
 
 Sem `transition` nas cenas, as pads `[v0][v1]…` vão para `concat`.
 
@@ -2043,7 +2051,7 @@ Com `crossfade`, o offset é a duração acumulada da timeline visual menos a du
 
 Com `fade`, fade-out na cena anterior, fade-in na seguinte, depois `concat`. A duração total **não** encolhe.
 
-Áudio, texto e overlay **não** recebem `xfade` / `fade`. `keepAudio` usa o start visual da cena (no crossfade, o áudio original entra no overlap).
+Áudio, texto e overlay **não** recebem `xfade` / `fade`. `keepAudio` e áudio de cena usam o start visual da cena (no crossfade, o áudio original entra no overlap). `mediaStart` do vídeo não altera o `atrim` / `adelay` desses clips.
 
 ---
 
