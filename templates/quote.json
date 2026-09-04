@@ -1,0 +1,62 @@
+{
+  "name": "quote",
+  "version": 1,
+  "variables": {
+    "background": {
+      "type": "asset",
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "author": {
+      "type": "string",
+      "required": true
+    },
+    "fontSize": {
+      "type": "number",
+      "default": 56
+    },
+    "output": {
+      "type": "string",
+      "default": "quote.mp4"
+    }
+  },
+  "composition": {
+    "output": "{{output}}",
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "scenes": [
+      {
+        "type": "image",
+        "source": "{{background}}",
+        "duration": 6
+      }
+    ],
+    "texts": [
+      {
+        "content": "{{title}}",
+        "start": 0.5,
+        "duration": 5,
+        "x": "center",
+        "y": 380,
+        "fontSize": { "$variable": "fontSize" },
+        "color": "#FFFFFF",
+        "bold": true,
+        "align": "center"
+      },
+      {
+        "content": "{{author}}",
+        "start": 0.5,
+        "duration": 5,
+        "x": "center",
+        "y": 620,
+        "fontSize": 32,
+        "color": "#DDDDDD",
+        "align": "center"
+      }
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "name": "full",
+  "version": 1,
+  "variables": {
+    "video": {
+      "type": "asset",
+      "required": true
+    },
+    "photo": {
+      "type": "asset",
+      "required": true
+    },
+    "overlay": {
+      "type": "asset",
+      "required": true
+    },
+    "audio": {
+      "type": "asset",
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "subtitle": {
+      "type": "string",
+      "required": true
+    },
+    "fontSize": {
+      "type": "number",
+      "default": 64
+    },
+    "bold": {
+      "type": "boolean",
+      "default": true
+    },
+    "brightness": {
+      "type": "number",
+      "default": 0.08
+    },
+    "output": {
+      "type": "string",
+      "default": "template-full.mp4"
+    }
+  },
+  "composition": {
+    "output": "{{output}}",
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "scenes": [
+      {
+        "type": "video",
+        "source": "{{video}}",
+        "duration": 6,
+        "mediaStart": 20,
+        "transform": {
+          "scale": {
+            "from": 1,
+            "to": 1.15,
+            "easing": "ease-in-out"
+          }
+        },
+        "effects": {
+          "brightness": { "$variable": "brightness" },
+          "contrast": 1.15,
+          "saturation": 0.9
+        }
+      },
+      {
+        "type": "image",
+        "source": "{{photo}}",
+        "duration": 5,
+        "transition": {
+          "type": "crossfade",
+          "duration": 1
+        },
+        "effects": {
+          "opacity": 0.95
+        }
+      }
+    ],
+    "audio": [
+      {
+        "source": "{{audio}}",
+        "role": "background",
+        "start": 0,
+        "duration": 10
+      }
+    ],
+    "texts": [
+      {
+        "content": "{{title}}\n{{subtitle}}",
+        "start": 0.6,
+        "duration": 9,
+        "x": "center",
+        "y": 160,
+        "fontSize": { "$variable": "fontSize" },
+        "color": "#FFFFFF",
+        "bold": { "$variable": "bold" },
+        "align": "center"
+      }
+    ],
+    "overlays": [
+      {
+        "source": "{{overlay}}",
+        "start": 1,
+        "duration": 8,
+        "x": 80,
+        "y": 80,
+        "width": 220,
+        "height": 220
+      }
+    ]
+  }
+}

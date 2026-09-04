@@ -76,7 +76,15 @@ pnpm dev -- compositions/effects-media-timing.json
 
 A saída padrão é `output/videos/output.mp4`.
 
-Antes de renderizar, o programa imprime o comando FFmpeg montado. Em caso de erro (JSON inválido, asset ausente, FFmpeg), a CLI termina com código `1`.
+```bash
+pnpm render compositions/example.json
+pnpm render compositions/example.json --verbose
+pnpm render compositions/example.json --debug
+pnpm render-template templates/quote.json --input templates/inputs/quote.json
+pnpm benchmark
+```
+
+No modo normal a CLI imprime composição e caminho do MP4. `--verbose` mostra planejamento, barra de progresso do FFmpeg e o **render factor**. `--debug` inclui o comando FFmpeg. Em erro (JSON inválido, asset ausente, FFmpeg, cancelamento), o processo termina com código `1`.
 
 ## Lint e testes
 
@@ -495,10 +503,25 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - Effects são estáticos. `opacity` mistura a cena com o canvas preto (YUV); não fura a cena seguinte fora do `crossfade`.
 - `grayscale` e `sepia` passam por `format=gbrp` + `colorchannelmixer` e voltam para `yuv420p`.
 
+## Templates
+
+Uma camada opcional **antes** do parser. O template declara variáveis; o resolver produz a mesma `Composition` que um JSON escrito à mão.
+
+```bash
+pnpm render-template templates/quote.json --input templates/inputs/quote.json
+pnpm render-template templates/full.json --input templates/inputs/full.json --verbose
+```
+
+Documentação: [docs/templates.md](docs/templates.md).
+
 ## Arquitetura
 
 ```text
-CLI
+CLI  (composition JSON  ou  template + input)
+ ↓
+TemplateResolver   ← somente quando o arquivo é um template
+ ↓
+Composition
  ↓
 CompositionParser
  ↓
@@ -546,12 +569,18 @@ input/
 output/
   videos/                 # MP4s gerados
 compositions/             # JSONs de composição
+compositions/benchmark/   # cargas para pnpm benchmark
+templates/                # templates reutilizáveis e inputs de exemplo
+templates/presets/        # presets de proporção (templates comuns)
+docs/                     # pipeline, progresso, cancelamento, performance, templates
 scripts/                  # fallback de texto (Swift) sem drawtext
 src/
   cli/                    # entrada da aplicação
+  benchmark/              # suíte de medição
   composition/            # parser e timeline de áudio
+  template/               # resolver, validação e loader (sem FFmpeg)
   media/                  # resolução de arquivos e fontes
-  renderer/               # orquestração e RenderPlan
+  renderer/               # orquestração, contexto e métricas
   ffmpeg/                 # filtros, comando e executor
   interfaces/             # tipagens de domínio
 ```
@@ -560,3 +589,8 @@ src/
 
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
 - [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, effects, áudio)
+- [docs/render-pipeline.md](docs/render-pipeline.md) — ciclo de vida do render
+- [docs/performance.md](docs/performance.md) — render factor e benchmark
+- [docs/progress.md](docs/progress.md) — callback de progresso
+- [docs/cancellation.md](docs/cancellation.md) — AbortSignal e cleanup
+- [docs/templates.md](docs/templates.md) — Template Engine (variáveis, CLI e API)
