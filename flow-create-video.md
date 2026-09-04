@@ -5,8 +5,10 @@ Como a composição vira um vídeo no video-lab.
 ## Pipeline
 
 ```text
-JSON
-→ loadComposition / CompositionParser
+JSON de Composition
+    ou  Template + input  → TemplateResolver
+    ou  Template + N inputs → VideoFactory → N jobs
+→ CompositionParser (já chamado no resolver)
 → Renderer.prepare
 → RenderPlan
 → Tracks
@@ -16,13 +18,13 @@ JSON
 → MP4
 ```
 
-O JSON descreve a timeline. O parser valida e aplica defaults. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
+O JSON descreve a timeline. O parser valida e aplica defaults. Templates só produzem Composition. A Factory só orquestra jobs. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
 
 ```text
 Video Track     cenas em sequência (image ou video)
 Audio Track     clips com start absoluto
 Overlay Track   imagens sobrepostas
-Text Track      drawtext, ou PNG rasterizado se o FFmpeg não tiver libfreetype
+Text Track      drawtext, ou PNG no bounding box se o FFmpeg não tiver libfreetype
 ```
 
 Camadas visuais, de baixo para cima: vídeo → overlays → texto.

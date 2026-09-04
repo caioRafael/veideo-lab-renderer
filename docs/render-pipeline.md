@@ -4,7 +4,7 @@ O video-lab orquestra o FFmpeg. O Node não processa frames.
 
 ```text
 Composition  ou  Template + Input → TemplateResolver
-    ↓
+    ↓                    (factory: N inputs → N jobs → RenderManager)
 loadComposition / CompositionParser
     ↓
 Renderer.prepare
@@ -41,7 +41,7 @@ Cada render ganha um diretório isolado:
   intermediate/
 ```
 
-Dois `Renderer` podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez.
+Dois `Renderer` podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez. A Factory cria uma instância por job e limita quantas rodam juntos (`maxConcurrentRenders`).
 
 ## Temporary files
 

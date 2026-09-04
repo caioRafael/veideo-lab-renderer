@@ -1,15 +1,15 @@
 # video-lab
 
-Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
+Engine local em TypeScript para montar e produzir vídeos com **FFmpeg**.
 
-Você descreve cenas (imagem/vídeo), transformações estáticas ou animadas, efeitos visuais estáticos, transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
+Você descreve cenas (imagem/vídeo), transformações, efeitos, transições (`fade` / `crossfade`), áudios, textos e overlays num JSON de composição — ou num **template** com variáveis. O projeto valida, monta um `RenderPlan` e gera o MP4. A **Video Factory** recebe um template + vários inputs e renderiza o lote com concorrência limitada.
 
 ## Requisitos
 
 - Node.js
 - [pnpm](https://pnpm.io)
 - FFmpeg instalado no sistema (`ffmpeg` no PATH)
-- Para `drawtext` nativo: FFmpeg compilado com libfreetype. Sem isso, o engine rasteriza o texto e aplica como overlay.
+- Para `drawtext` nativo: FFmpeg compilado com libfreetype. Sem isso, o engine rasteriza o texto num PNG do tamanho do texto (bounding box) e aplica como overlay.
 
 ```bash
 # macOS (Homebrew) — o formula padrão pode não incluir drawtext
@@ -81,10 +81,11 @@ pnpm render compositions/example.json
 pnpm render compositions/example.json --verbose
 pnpm render compositions/example.json --debug
 pnpm render-template templates/quote.json --input templates/inputs/quote.json
+pnpm factory render-template templates/youtube-short.json --input templates/inputs/batch-youtube-short.json --concurrency 2
 pnpm benchmark
 ```
 
-No modo normal a CLI imprime composição e caminho do MP4. `--verbose` mostra planejamento, barra de progresso do FFmpeg e o **render factor**. `--debug` inclui o comando FFmpeg. Em erro (JSON inválido, asset ausente, FFmpeg, cancelamento), o processo termina com código `1`.
+No modo normal a CLI imprime composição e caminho do MP4. `--verbose` mostra planejamento, barra de progresso do FFmpeg e o **render factor**. `--debug` inclui o comando FFmpeg. A Factory imprime totais do lote e grava `manifest.json`. Em erro (JSON inválido, asset ausente, FFmpeg, cancelamento), o processo termina com código `1`. Um job falho no lote **não** aborta os demais.
 
 ## Lint e testes
 
@@ -487,6 +488,11 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - `compositions/effects-transform.json` — scale/pan animados + brightness/contrast/saturation
 - `compositions/effects-crossfade.json` — A escura + B clara, crossfade 1s (total 9s)
 - `compositions/effects-media-timing.json` — mediaStart 30 + freeze + effects
+- `templates/quote.json` — fundo + título + autor
+- `templates/youtube-short.json` — 9:16, título, subtítulo, overlay
+- `templates/slideshow.json` — três cenas, fade e crossfade
+- `templates/full.json` — vídeo, transform, effects, texto, áudio, overlay
+- `templates/inputs/batch-youtube-short.json` — três inputs para `pnpm factory`
 
 ## Limitações conhecidas
 
@@ -499,9 +505,10 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - Áudio não faz crossfade; no overlap visual, `keepAudio` e áudio de cena podem se misturar no `amix`.
 - `keepAudio` e áudio de cena não herdam `mediaStart` do vídeo.
 - Sombra de texto não tem blur (`shadow.blur` só aceita `0`). Fundo de texto não tem radius.
-- O wrapping usa uma estimativa de largura por caractere; o desenho final (drawtext ou PNG) pode ser um pouco mais estreito ou largo que a caixa.
+- O wrapping e o bounding box do PNG usam uma estimativa de largura por caractere; o desenho Swift pode ser um pouco mais estreito ou largo que a caixa.
 - Effects são estáticos. `opacity` mistura a cena com o canvas preto (YUV); não fura a cena seguinte fora do `crossfade`.
 - `grayscale` e `sepia` passam por `format=gbrp` + `colorchannelmixer` e voltam para `yuv420p`.
+- A Factory é só em memória: se o processo morre, a fila some. Não há API HTTP, banco nem retry de erros determinísticos (template, asset, composition).
 
 ## Templates
 
@@ -514,26 +521,35 @@ pnpm render-template templates/full.json --input templates/inputs/full.json --ve
 
 Documentação: [docs/templates.md](docs/templates.md).
 
+## Video Factory
+
+Produção em lote: um template + vários inputs, fila in-memory, concorrência limitada, retry só para falha de FFmpeg, cancelamento via AbortSignal e `manifest.json`.
+
+```bash
+pnpm factory render-template \
+  templates/youtube-short.json \
+  --input templates/inputs/batch-youtube-short.json \
+  --concurrency 2
+```
+
+Documentação: [docs/factory.md](docs/factory.md).
+
+
 ## Arquitetura
 
 ```text
-CLI  (composition JSON  ou  template + input)
- ↓
-TemplateResolver   ← somente quando o arquivo é um template
- ↓
-Composition
- ↓
-CompositionParser
- ↓
+CLI
+ ├── pnpm render            Composition JSON
+ ├── pnpm render-template   Template + 1 input
+ └── pnpm factory           Template + N inputs
+         ↓
+TemplateResolver → Composition (já validada pelo parser)
+         ↓
+RenderJob / RenderManager   ← somente factory
+         ↓
 Renderer
- ↓
-RenderPlan (tracks)
- ↓
-FfmpegCommandBuilder
- ↓
-FfmpegExecutor
- ↓
-FFmpeg
+         ↓
+RenderPlan → FfmpegCommandBuilder → FfmpegExecutor → FFmpeg
 ```
 
 O `RenderPlan` é uma timeline de tracks independentes:
@@ -556,7 +572,7 @@ Renderer
  └── FfmpegExecutor
 ```
 
-O fallback de texto (PNG) é escolhido pelo `Renderer` quando o FFmpeg não tem `drawtext`. A CLI não precisa saber qual estratégia foi usada.
+O fallback de texto (PNG no bounding box) é escolhido pelo `Renderer` quando o FFmpeg não tem `drawtext`. A CLI e a Factory não precisam saber qual estratégia foi usada.
 
 ## Estrutura
 
@@ -567,18 +583,20 @@ input/
   videos/                 # vídeos de cena
   fonts/                  # TTFs opcionais dos textos
 output/
-  videos/                 # MP4s gerados
+  videos/                 # MP4s; na factory: job-001/video.mp4 + manifest.json
 compositions/             # JSONs de composição
 compositions/benchmark/   # cargas para pnpm benchmark
-templates/                # templates reutilizáveis e inputs de exemplo
+templates/                # templates reutilizáveis
+templates/inputs/         # variáveis e batches
 templates/presets/        # presets de proporção (templates comuns)
-docs/                     # pipeline, progresso, cancelamento, performance, templates
+docs/                     # pipeline, factory, templates, performance
 scripts/                  # fallback de texto (Swift) sem drawtext
 src/
   cli/                    # entrada da aplicação
   benchmark/              # suíte de medição
   composition/            # parser e timeline de áudio
   template/               # resolver, validação e loader (sem FFmpeg)
+  factory/                # jobs, fila, concorrência e manifest
   media/                  # resolução de arquivos e fontes
   renderer/               # orquestração, contexto e métricas
   ffmpeg/                 # filtros, comando e executor
@@ -594,3 +612,4 @@ src/
 - [docs/progress.md](docs/progress.md) — callback de progresso
 - [docs/cancellation.md](docs/cancellation.md) — AbortSignal e cleanup
 - [docs/templates.md](docs/templates.md) — Template Engine (variáveis, CLI e API)
+- [docs/factory.md](docs/factory.md) — Video Factory (batch, jobs, concorrência)

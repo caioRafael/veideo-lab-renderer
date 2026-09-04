@@ -221,8 +221,22 @@ await renderer.render(composition)
 | `templates/presets/youtube-16x9.json` | preset 1920×1080 |
 | `templates/presets/youtube-short-9x16.json` | preset 1080×1920 |
 | `templates/presets/square-1x1.json` | preset 1080×1080 |
+| `templates/inputs/batch-youtube-short.json` | três inputs para a Factory |
 
 Presets são templates comuns. Não existe herança (`extends`) nesta fase.
+
+## Lote (Video Factory)
+
+Vários inputs no mesmo template. O resolver continua o mesmo; a Factory só cria um job por input.
+
+```bash
+pnpm factory render-template \
+  templates/youtube-short.json \
+  --input templates/inputs/batch-youtube-short.json \
+  --concurrency 2
+```
+
+Ver [factory.md](factory.md).
 
 ## Segurança
 
@@ -240,5 +254,5 @@ Templates são dados, não código.
 - Sem herança de templates
 - Sem interpolação em números (use `$variable`)
 - Sem validação física de assets
-- Sem API HTTP, banco ou fila
-- Otimização de PNG de texto (bounding box) não faz parte desta camada
+- Sem API HTTP, banco ou fila persistente
+- O PNG de texto (bounding box) é do renderer, não desta camada

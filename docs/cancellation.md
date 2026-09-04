@@ -24,9 +24,18 @@ RenderContext é apagado
 RenderCancelledError
 ```
 
-A CLI liga SIGINT/SIGTERM a um `AbortController`.
+A CLI (`pnpm render`, `pnpm render-template`, `pnpm factory`) liga SIGINT/SIGTERM a um `AbortController`.
+
+## Factory
+
+Cancelar o batch cancela jobs `queued` (sem FFmpeg) e aborta os que estão renderizando. Jobs `completed` ficam completed.
+
+```ts
+const controller = new AbortController()
+await factory.renderTemplate({ template, inputs, signal: controller.signal })
+```
 
 ## Limites
 
-- A rasterização Swift (`spawnSync`) não pode ser interrompida no meio de um PNG. O sinal é conferido **entre** textos.
+- A rasterização Swift é interrompida entre textos (e no `spawn` atual, também via `AbortSignal` do processo).
 - Probe `ffprobe` é síncrono e curto; o sinal é conferido antes e depois.

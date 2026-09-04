@@ -2025,7 +2025,7 @@ input
   → effects (só valores não-default; ordem canônica)
   → transition (concat | fade+concat | xfade)
   → overlay
-  → texto (drawtext com wrap/align/stroke/shadow/box, ou PNG rasterizado com a mesma intenção)
+  → texto (drawtext com wrap/align/stroke/shadow/box, ou PNG no bounding box com a mesma intenção)
   → áudio (atrim, adelay, amix ou anullsrc)
   → áudio (atrim, adelay, amix ou anullsrc)
   → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURAÇÃO -pix_fmt yuv420p

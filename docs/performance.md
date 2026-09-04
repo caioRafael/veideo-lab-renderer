@@ -55,18 +55,32 @@ DEPOIS (até 4 processos Swift em paralelo)
   Total:             41.19s
 ```
 
-A rasterização ficou ~42% mais rápida. O encode/overlays do FFmpeg continua dominando essa carga (~80%+). Não vale mexer no filter graph nem no `RenderPlan` para ganho de milissegundos.
+A rasterização ficou ~42% mais rápida. O encode/overlays do FFmpeg continua dominando essa carga (~80%+).
+
+## Bounding box de texto (Fase 11)
+
+O fallback PNG passou a gerar só a área do texto (padding, stroke e shadow inclusos). Overlay reposiciona o PNG.
+
+`many-texts` na mesma máquina, depois da mudança:
+
+```text
+Preparing / Swift:  1.84s
+FFmpeg:             1.60s
+Total:              1.61s  (0.20x)
+```
+
+ANTES (PNG 1920×1080): 40.74s / 5.09x.
+O custo do overlay full-frame era o gargalo real.
 
 ## Gargalos
 
-1. **FFmpeg encode** — sempre o custo principal (libx264 1080p).
-2. **Fallback de texto** — cada texto vira PNG 1920×1080 e overlay no graph. Sem `drawtext`, `many-texts` fica lento.
+1. **FFmpeg encode** — custo principal em cenas sem muitos textos.
+2. **Fallback de texto** — ainda usa Swift + PNG, agora no bounding box.
 3. **Effects / animated scale** — um pouco mais caros que pad simples, ainda no FFmpeg.
 
 ## O que não foi feito
 
-- cache, workers, fila, mudança de `-preset` do x264
-- paralelismo de renders
+- cache, workers persistentes, mudança de `-preset` do x264
 - juntar filtros `eq` (ganho irrelevante frente ao encode)
 
 ## Memória
@@ -76,3 +90,13 @@ O executor não acumula stdout/stderr. Mantém no máximo ~16 KB de stderr para 
 ## Concorrência
 
 Cada render tem o próprio `RenderContext`. Rasterização de texto usa no máximo 4 processos Swift por render.
+
+A Video Factory limita FFmpeg simultâneos com `--concurrency`. Batch de 3 YouTube Shorts (8s, 1080×1920):
+
+```text
+concurrency=1    wall 7.75s
+concurrency=2    wall 6.99s
+concurrency=4    wall 7.56s
+```
+
+Mais concorrência não foi automaticamente mais rápido neste lote curto.

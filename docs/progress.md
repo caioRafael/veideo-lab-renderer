@@ -25,3 +25,20 @@ await renderer.render(composition, {
 - Antes do primeiro `time=`, o progresso permanece `0` e a fase já identifica a etapa.
 - Conclusão: `phase: "completed"`, `progress: 1`.
 - Erro ou cancelamento emitem `failed` / `cancelled`.
+
+## Factory
+
+O lote agrega outro nível, sem substituir o callback do Renderer:
+
+```ts
+interface FactoryProgress {
+  total: number
+  completed: number
+  failed: number
+  cancelled: number
+  active: number
+  queued: number
+}
+```
+
+`--verbose` na Factory mostra totais do batch e o progresso dos jobs ativos. Não misture a porcentagem de um vídeo com `37/100` do lote.
