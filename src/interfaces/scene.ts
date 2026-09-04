@@ -1,4 +1,5 @@
 import type { AudioClip } from './audio'
+import type { ShortMediaPolicy } from './media-timing'
 import type { Transform } from './transform'
 import type { Transition } from './transition'
 
@@ -8,6 +9,8 @@ export interface Scene {
   type: SceneType
   source: string
   duration: number
+  mediaStart?: number
+  shortMedia?: ShortMediaPolicy
   audio?: AudioClip[]
   keepAudio?: boolean
   transition?: Transition

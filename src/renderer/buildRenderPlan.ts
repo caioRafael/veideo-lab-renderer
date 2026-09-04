@@ -1,5 +1,5 @@
 import { AudioTimeline } from '../composition/AudioTimeline'
-import { visualDuration } from '../composition/visualDuration'
+import { scenePlacements, visualDuration } from '../composition/visualDuration'
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { Composition } from '../interfaces/composition'
 import type {
@@ -52,20 +52,28 @@ function createVideoTrack(
   mediaResolver: MediaResolver,
 ): VideoTrack {
   const items: VideoItem[] = []
-  let cursor = 0
+  const placements = scenePlacements(composition.scenes)
 
   for (const [index, scene] of composition.scenes.entries()) {
-    const start =
-      scene.transition?.type === 'crossfade'
-        ? cursor - scene.transition.duration
-        : cursor
+    const placement = placements[index]
+    if (placement === undefined) {
+      continue
+    }
 
     const item: VideoItem = {
       id: `video-${index}`,
       source: mediaResolver.resolveSceneSource(scene),
-      start,
-      duration: scene.duration,
+      start: placement.start,
+      duration: placement.duration,
       mediaType: scene.type,
+    }
+
+    if (scene.mediaStart !== undefined) {
+      item.mediaStart = scene.mediaStart
+    }
+
+    if (scene.shortMedia !== undefined) {
+      item.shortMedia = scene.shortMedia
     }
 
     if (scene.transition !== undefined) {
@@ -77,7 +85,6 @@ function createVideoTrack(
     }
 
     items.push(item)
-    cursor = start + scene.duration
   }
 
   return {

@@ -1,10 +1,13 @@
+import { applyEasing, DEFAULT_EASING, type EasingName } from './easing'
+
 /**
- * Numeric transform parameter: a constant or a linear from→to animation
- * over the scene duration. No keyframes or easing in this phase.
+ * Numeric transform parameter: a constant or a from→to animation
+ * over the scene duration. Optional easing changes only the progression.
  */
 export interface AnimatedValue {
   from: number
   to: number
+  easing?: EasingName
 }
 
 export type TransformValue = number | AnimatedValue
@@ -29,6 +32,7 @@ export interface PanOffset {
 export interface AnimatedPoint {
   from: Point
   to: Point
+  easing?: EasingName
 }
 
 export type PanValue = PanOffset | AnimatedPoint
@@ -46,6 +50,9 @@ export type PanValue = PanOffset | AnimatedPoint
  * - scale'(t) = scale(t) * zoom(t)
  * - x'(t) = x(t) + pan.x(t)
  * - y'(t) = y(t) + pan.y(t)
+ *
+ * Each animated component interpolates with its own easing.
+ * Absent easing is linear.
  */
 export interface Transform {
   scale?: TransformValue
@@ -59,6 +66,7 @@ export interface Transform {
 export interface ResolvedScalar {
   from: number
   to: number
+  easing: EasingName
 }
 
 export interface ResolvedTransform {
@@ -67,6 +75,8 @@ export interface ResolvedTransform {
   zoom: ResolvedScalar
   x: ResolvedScalar
   y: ResolvedScalar
+  panX: ResolvedScalar
+  panY: ResolvedScalar
 }
 
 export function isAnimatedValue(value: TransformValue): value is AnimatedValue {
@@ -82,8 +92,7 @@ export function isAnimatedScalar(value: ResolvedScalar): boolean {
 }
 
 export function lerp(from: number, to: number, t: number): number {
-  const clamped = Math.min(Math.max(t, 0), 1)
-  return from + (to - from) * clamped
+  return from + (to - from) * applyEasing(DEFAULT_EASING, t)
 }
 
 export function lerpAt(
@@ -91,12 +100,13 @@ export function lerpAt(
   to: number,
   time: number,
   duration: number,
+  easing: EasingName = DEFAULT_EASING,
 ): number {
   if (duration <= 0) {
     return to
   }
 
-  return lerp(from, to, time / duration)
+  return from + (to - from) * applyEasing(easing, time / duration)
 }
 
 export function resolveTransform(
@@ -104,10 +114,12 @@ export function resolveTransform(
 ): ResolvedTransform {
   if (transform === undefined) {
     return {
-      scale: { from: 1, to: 1 },
-      zoom: { from: 1, to: 1 },
-      x: { from: 0, to: 0 },
-      y: { from: 0, to: 0 },
+      scale: constantScalar(1),
+      zoom: constantScalar(1),
+      x: constantScalar(0),
+      y: constantScalar(0),
+      panX: constantScalar(0),
+      panY: constantScalar(0),
     }
   }
 
@@ -115,8 +127,10 @@ export function resolveTransform(
   const resolved: ResolvedTransform = {
     scale: toScalar(transform.scale, 1),
     zoom: toScalar(transform.zoom, 1),
-    x: addScalars(toScalar(transform.x, 0), pan.x),
-    y: addScalars(toScalar(transform.y, 0), pan.y),
+    x: toScalar(transform.x, 0),
+    y: toScalar(transform.y, 0),
+    panX: pan.x,
+    panY: pan.y,
   }
 
   if (transform.crop !== undefined) {
@@ -133,10 +147,14 @@ export function evaluateTransform(
 ): { scale: number; x: number; y: number } {
   return {
     scale:
-      lerpAt(resolved.scale.from, resolved.scale.to, time, duration) *
-      lerpAt(resolved.zoom.from, resolved.zoom.to, time, duration),
-    x: lerpAt(resolved.x.from, resolved.x.to, time, duration),
-    y: lerpAt(resolved.y.from, resolved.y.to, time, duration),
+      interpolateScalar(resolved.scale, time, duration) *
+      interpolateScalar(resolved.zoom, time, duration),
+    x:
+      interpolateScalar(resolved.x, time, duration) +
+      interpolateScalar(resolved.panX, time, duration),
+    y:
+      interpolateScalar(resolved.y, time, duration) +
+      interpolateScalar(resolved.panY, time, duration),
   }
 }
 
@@ -145,16 +163,30 @@ export function hasPlacementTransform(resolved: ResolvedTransform): boolean {
     isAnimatedScalar(resolved.scale) ||
     isAnimatedScalar(resolved.zoom) ||
     isAnimatedScalar(resolved.x) ||
-    isAnimatedScalar(resolved.y)
+    isAnimatedScalar(resolved.y) ||
+    isAnimatedScalar(resolved.panX) ||
+    isAnimatedScalar(resolved.panY)
   ) {
     return true
   }
 
   return (
     resolved.scale.from * resolved.zoom.from !== 1 ||
-    resolved.x.from !== 0 ||
-    resolved.y.from !== 0
+    resolved.x.from + resolved.panX.from !== 0 ||
+    resolved.y.from + resolved.panY.from !== 0
   )
+}
+
+function interpolateScalar(
+  value: ResolvedScalar,
+  time: number,
+  duration: number,
+): number {
+  return lerpAt(value.from, value.to, time, duration, value.easing)
+}
+
+function constantScalar(value: number): ResolvedScalar {
+  return { from: value, to: value, easing: DEFAULT_EASING }
 }
 
 function toScalar(
@@ -162,23 +194,17 @@ function toScalar(
   identity: number,
 ): ResolvedScalar {
   if (value === undefined) {
-    return { from: identity, to: identity }
+    return constantScalar(identity)
   }
 
   if (typeof value === 'number') {
-    return { from: value, to: value }
+    return constantScalar(value)
   }
 
-  return { from: value.from, to: value.to }
-}
-
-function addScalars(
-  left: ResolvedScalar,
-  right: ResolvedScalar,
-): ResolvedScalar {
   return {
-    from: left.from + right.from,
-    to: left.to + right.to,
+    from: value.from,
+    to: value.to,
+    easing: value.easing ?? DEFAULT_EASING,
   }
 }
 
@@ -188,20 +214,23 @@ function resolvePan(pan: PanValue | undefined): {
 } {
   if (pan === undefined) {
     return {
-      x: { from: 0, to: 0 },
-      y: { from: 0, to: 0 },
+      x: constantScalar(0),
+      y: constantScalar(0),
     }
   }
 
   if (isAnimatedPoint(pan)) {
+    const easing = pan.easing ?? DEFAULT_EASING
     return {
       x: {
         from: pan.from.x,
         to: pan.to.x,
+        easing,
       },
       y: {
         from: pan.from.y,
         to: pan.to.y,
+        easing,
       },
     }
   }

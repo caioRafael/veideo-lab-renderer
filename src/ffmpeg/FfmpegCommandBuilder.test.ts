@@ -512,6 +512,172 @@ describe('FfmpegCommandBuilder', () => {
     assert.equal(args[args.lastIndexOf('-t') + 1], '7')
   })
 
+  it('chains fade then crossfade with the accumulated visual offset', () => {
+    const args = builder.build(
+      planWith({
+        duration: 14,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 5,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'fade', duration: 1 },
+            },
+            {
+              id: 'video-2',
+              source: '/tmp/c.png',
+              start: 9,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /fade=t=out:st=4:d=1:c=black\[fo1\]/)
+    assert.match(filterComplex, /fade=t=in:st=0:d=1:c=black\[fi1\]/)
+    assert.match(filterComplex, /\[fo1\]\[fi1\]concat=n=2:v=1:a=0\[vx1\]/)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=9\[vout\]/,
+    )
+    assert.equal(args[args.lastIndexOf('-t') + 1], '14')
+  })
+
+  it('normalizes transformed content timestamps before xfade', () => {
+    const args = builder.build(
+      planWith({
+        duration: 9,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.mp4',
+              start: 0,
+              duration: 5,
+              mediaType: 'video',
+              transform: { scale: { from: 1, to: 1.1 } },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 4,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /setpts=PTS-STARTPTS\[v0fit\]/)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=4\[vout\]/,
+    )
+  })
+
+  it('applies easing expressions before fade and crossfade without changing duration', () => {
+    const args = builder.build(
+      planWith({
+        duration: 8,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 4,
+              mediaType: 'image',
+              transform: { scale: { from: 1, to: 1.5, easing: 'ease-in' } },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 4,
+              duration: 4,
+              mediaType: 'image',
+              incomingTransition: { type: 'fade', duration: 1 },
+              transform: {
+                x: { from: 0, to: 80, easing: 'ease-out' },
+              },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /pow\(/)
+    assert.match(filterComplex, /eval=frame/)
+    assert.match(filterComplex, /fade=t=out:st=3:d=1:c=black/)
+    assert.match(filterComplex, /fade=t=in:st=0:d=1:c=black/)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '8')
+  })
+
+  it('keeps the crossfade offset when scenes use easing', () => {
+    const args = builder.build(
+      planWith({
+        duration: 7,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/clip.mp4',
+              start: 0,
+              duration: 4,
+              mediaType: 'video',
+              transform: {
+                scale: { from: 1, to: 1.2, easing: 'ease-in-out' },
+                pan: {
+                  from: { x: 0, y: 0 },
+                  to: { x: 40, y: 0 },
+                  easing: 'ease-out',
+                },
+              },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 3,
+              duration: 4,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /if\(lt\(/)
+    assert.match(filterComplex, /eval=frame/)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=3\[vout\]/,
+    )
+    assert.equal(args[args.lastIndexOf('-t') + 1], '7')
+  })
+
   it('does not apply scene transforms to audio, overlay or text filters', () => {
     const args = builder.build(
       planWith({
@@ -584,5 +750,252 @@ describe('FfmpegCommandBuilder', () => {
     assert.match(filterComplex, /drawtext=fontfile='\/tmp\/Arial.ttf'/)
     assert.match(filterComplex, /text='Hello World'/)
     assert.equal(filterComplex.includes('volume=1.4'), false)
+  })
+
+  it('seeks video input when mediaStart is set', () => {
+    const args = builder.build(
+      planWith({
+        duration: 5,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/clip.mp4',
+              start: 0,
+              duration: 5,
+              mediaType: 'video',
+              mediaStart: 20,
+            },
+          ]),
+        ],
+      }),
+    )
+
+    assert.deepEqual(args.slice(1, 7), [
+      '-ss',
+      '20',
+      '-t',
+      '5',
+      '-i',
+      '/tmp/clip.mp4',
+    ])
+  })
+
+  it('loops video input inside the scene without changing output duration', () => {
+    const args = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/clip.mp4',
+              start: 0,
+              duration: 10,
+              mediaType: 'video',
+              shortMedia: 'loop',
+            },
+          ]),
+        ],
+      }),
+    )
+
+    assert.deepEqual(args.slice(1, 5), [
+      '-stream_loop',
+      '-1',
+      '-i',
+      '/tmp/clip.mp4',
+    ])
+    assert.equal(args.includes('-ss'), false)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '10')
+
+    const probed = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/clip.mp4',
+              start: 0,
+              duration: 10,
+              mediaType: 'video',
+              mediaStart: 3,
+              shortMedia: 'loop',
+              sourceDuration: 6,
+            },
+          ]),
+        ],
+      }),
+    )
+
+    assert.deepEqual(probed.slice(1, 7), [
+      '-ss',
+      '3',
+      '-t',
+      '3',
+      '-i',
+      '/tmp/clip.mp4',
+    ])
+    assert.equal(probed.includes('-stream_loop'), false)
+
+    const probedGraph = probed[probed.indexOf('-filter_complex') + 1]
+    assert.ok(probedGraph)
+    assert.match(probedGraph, /split=4/)
+    assert.match(probedGraph, /concat=n=4:v=1:a=0/)
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /trim=duration=10/)
+  })
+
+  it('freezes the last frame with input duration still on the scene', () => {
+    const args = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/clip.mp4',
+              start: 0,
+              duration: 10,
+              mediaType: 'video',
+              mediaStart: 3,
+              shortMedia: 'freeze',
+            },
+          ]),
+        ],
+      }),
+    )
+
+    assert.deepEqual(args.slice(1, 7), [
+      '-ss',
+      '3',
+      '-t',
+      '10',
+      '-i',
+      '/tmp/clip.mp4',
+    ])
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /tpad=stop_mode=clone:stop_duration=10/)
+  })
+
+  it('keeps fade timing when the next scene is trimmed', () => {
+    const args = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.mp4',
+              start: 5,
+              duration: 5,
+              mediaType: 'video',
+              mediaStart: 20,
+              incomingTransition: { type: 'fade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /fade=t=out:st=4:d=1:c=black/)
+    assert.match(filterComplex, /fade=t=in:st=0:d=1:c=black/)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '10')
+    assert.ok(args.includes('-ss'))
+    assert.equal(args[args.indexOf('-ss') + 1], '20')
+  })
+
+  it('keeps the crossfade offset when B has mediaStart', () => {
+    const args = builder.build(
+      planWith({
+        duration: 9,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.mp4',
+              start: 4,
+              duration: 5,
+              mediaType: 'video',
+              mediaStart: 30,
+              incomingTransition: { type: 'crossfade', duration: 1 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=4\[vout\]/,
+    )
+    assert.equal(args[args.lastIndexOf('-t') + 1], '9')
+    assert.equal(args[args.indexOf('-ss') + 1], '30')
+  })
+
+  it('keeps crossfade and animation on scene time with loop and freeze', () => {
+    for (const shortMedia of ['loop', 'freeze'] as const) {
+      const args = builder.build(
+        planWith({
+          duration: 9,
+          tracks: [
+            videoTrack([
+              {
+                id: 'video-0',
+                source: '/tmp/a.png',
+                start: 0,
+                duration: 5,
+                mediaType: 'image',
+              },
+              {
+                id: 'video-1',
+                source: '/tmp/b.mp4',
+                start: 4,
+                duration: 5,
+                mediaType: 'video',
+                mediaStart: 30,
+                shortMedia,
+                incomingTransition: { type: 'crossfade', duration: 1 },
+                transform: {
+                  scale: { from: 1, to: 1.3, easing: 'ease-in-out' },
+                },
+              },
+            ]),
+          ],
+        }),
+      )
+
+      const filterComplex = args[args.indexOf('-filter_complex') + 1]
+      assert.ok(filterComplex)
+      assert.match(
+        filterComplex,
+        /xfade=transition=fade:duration=1:offset=4\[vout\]/,
+      )
+      assert.match(filterComplex, /min\(max\(if\(isnan\(t\),0,t\)\/5,0\),1\)/)
+      assert.equal(args[args.lastIndexOf('-t') + 1], '9')
+    }
   })
 })

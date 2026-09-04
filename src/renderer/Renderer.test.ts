@@ -106,4 +106,62 @@ describe('Renderer', () => {
     await assert.rejects(() => renderer.execute(['-y']), /ffmpeg failed/)
     assert.doesNotThrow(() => renderer.cleanupTemporaryFiles())
   })
+
+  it('rejects a short video when shortMedia is error', () => {
+    fs.writeFileSync(path.join(mediaPaths.videos, 'clip.mp4'), 'video')
+
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      mediaDurationProbe: () => 4,
+    })
+
+    assert.throws(
+      () =>
+        renderer.prepare({
+          output: 'result.mp4',
+          width: 1920,
+          height: 1080,
+          fps: 25,
+          scenes: [{ type: 'video', source: 'clip.mp4', duration: 10 }],
+        }),
+      /Video media is shorter than scene duration/,
+    )
+  })
+
+  it('allows a short video when shortMedia is loop', () => {
+    fs.writeFileSync(path.join(mediaPaths.videos, 'clip.mp4'), 'video')
+
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      mediaDurationProbe: () => 3,
+    })
+
+    const prepared = renderer.prepare({
+      output: 'result.mp4',
+      width: 1920,
+      height: 1080,
+      fps: 25,
+      scenes: [
+        {
+          type: 'video',
+          source: 'clip.mp4',
+          duration: 10,
+          shortMedia: 'loop',
+        },
+      ],
+    })
+
+    assert.equal(prepared.args.includes('-stream_loop'), false)
+    assert.deepEqual(prepared.args.slice(1, 5), [
+      '-t',
+      '3',
+      '-i',
+      path.join(mediaPaths.videos, 'clip.mp4'),
+    ])
+    const filterComplex =
+      prepared.args[prepared.args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /split=4/)
+    assert.match(filterComplex, /concat=n=4:v=1:a=0/)
+  })
 })

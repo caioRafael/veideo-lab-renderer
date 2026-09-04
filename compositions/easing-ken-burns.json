@@ -1,0 +1,33 @@
+{
+  "output": "easing-ken-burns.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 8,
+      "transform": {
+        "scale": {
+          "from": 1,
+          "to": 1.18,
+          "easing": "ease-in-out"
+        },
+        "pan": {
+          "from": { "x": -80, "y": 20 },
+          "to": { "x": 100, "y": -30 },
+          "easing": "ease-out"
+        }
+      },
+      "audio": [
+        {
+          "source": "audio.mp3",
+          "role": "focus",
+          "start": 0,
+          "duration": 8
+        }
+      ]
+    }
+  ]
+}

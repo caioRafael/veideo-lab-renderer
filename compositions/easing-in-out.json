@@ -1,0 +1,20 @@
+{
+  "output": "easing-in-out.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 6,
+      "transform": {
+        "scale": {
+          "from": 1,
+          "to": 1.5,
+          "easing": "ease-in-out"
+        }
+      }
+    }
+  ]
+}

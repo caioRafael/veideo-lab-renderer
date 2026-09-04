@@ -1,5 +1,7 @@
 import type { AudioClip, AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
+import { isEasingName, type EasingName } from '../interfaces/easing'
+import { isShortMediaPolicy } from '../interfaces/media-timing'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
 import type { PositionValue, TextClip } from '../interfaces/text'
@@ -99,6 +101,38 @@ export class CompositionParser {
       ),
     }
 
+    if (value.mediaStart !== undefined) {
+      if (value.type !== 'video') {
+        throw this.invalid(
+          `${label}.mediaStart`,
+          'expected to be used only on video scenes',
+        )
+      }
+
+      scene.mediaStart = this.parseNonNegativeNumber(
+        value.mediaStart,
+        `${label}.mediaStart`,
+      )
+    }
+
+    if (value.shortMedia !== undefined) {
+      if (value.type !== 'video') {
+        throw this.invalid(
+          `${label}.shortMedia`,
+          'expected to be used only on video scenes',
+        )
+      }
+
+      if (!isShortMediaPolicy(value.shortMedia)) {
+        throw this.invalid(
+          `${label}.shortMedia`,
+          'expected "error", "loop" or "freeze"',
+        )
+      }
+
+      scene.shortMedia = value.shortMedia
+    }
+
     if (value.keepAudio !== undefined) {
       if (value.type !== 'video') {
         throw this.invalid(
@@ -150,6 +184,12 @@ export class CompositionParser {
     if (!this.isRecord(value)) {
       throw this.invalid(label, 'expected an object')
     }
+
+    this.assertKnownKeys(
+      value,
+      ['scale', 'zoom', 'x', 'y', 'pan', 'crop'],
+      label,
+    )
 
     const transform: Transform = {}
 
@@ -213,21 +253,28 @@ export class CompositionParser {
     label: string,
     kind: 'positive' | 'finite',
   ): AnimatedValue {
+    this.assertKnownKeys(value, ['from', 'to', 'easing'], label)
+
     if (value.from === undefined || value.to === undefined) {
       throw this.invalid(label, 'expected "from" and "to"')
     }
 
-    if (kind === 'positive') {
-      return {
-        from: this.parseRequiredPositiveNumber(value.from, `${label}.from`),
-        to: this.parseRequiredPositiveNumber(value.to, `${label}.to`),
-      }
+    const animated: AnimatedValue =
+      kind === 'positive'
+        ? {
+            from: this.parseRequiredPositiveNumber(value.from, `${label}.from`),
+            to: this.parseRequiredPositiveNumber(value.to, `${label}.to`),
+          }
+        : {
+            from: this.parseFiniteNumber(value.from, `${label}.from`),
+            to: this.parseFiniteNumber(value.to, `${label}.to`),
+          }
+
+    if (value.easing !== undefined) {
+      animated.easing = this.parseEasing(value.easing, `${label}.easing`)
     }
 
-    return {
-      from: this.parseFiniteNumber(value.from, `${label}.from`),
-      to: this.parseFiniteNumber(value.to, `${label}.to`),
-    }
+    return animated
   }
 
   private parsePan(value: unknown, label: string): PanValue {
@@ -246,6 +293,8 @@ export class CompositionParser {
       return this.parseAnimatedPoint(value, label)
     }
 
+    this.assertKnownKeys(value, ['x', 'y'], label)
+
     const pan: PanOffset = {}
 
     if (value.x !== undefined) {
@@ -263,20 +312,30 @@ export class CompositionParser {
     value: Record<string, unknown>,
     label: string,
   ): AnimatedPoint {
+    this.assertKnownKeys(value, ['from', 'to', 'easing'], label)
+
     if (value.from === undefined || value.to === undefined) {
       throw this.invalid(label, 'expected "from" and "to"')
     }
 
-    return {
+    const pan: AnimatedPoint = {
       from: this.parsePoint(value.from, `${label}.from`),
       to: this.parsePoint(value.to, `${label}.to`),
     }
+
+    if (value.easing !== undefined) {
+      pan.easing = this.parseEasing(value.easing, `${label}.easing`)
+    }
+
+    return pan
   }
 
   private parsePoint(value: unknown, label: string): Point {
     if (!this.isRecord(value)) {
       throw this.invalid(label, 'expected an object')
     }
+
+    this.assertKnownKeys(value, ['x', 'y'], label)
 
     return {
       x:
@@ -295,6 +354,8 @@ export class CompositionParser {
       throw this.invalid(label, 'expected an object')
     }
 
+    this.assertKnownKeys(value, ['width', 'height', 'x', 'y'], label)
+
     return {
       width: this.parseRequiredPositiveNumber(value.width, `${label}.width`),
       height: this.parseRequiredPositiveNumber(value.height, `${label}.height`),
@@ -307,6 +368,17 @@ export class CompositionParser {
           ? 0
           : this.parseNonNegativeNumber(value.y, `${label}.y`),
     }
+  }
+
+  private parseEasing(value: unknown, label: string): EasingName {
+    if (!isEasingName(value)) {
+      throw this.invalid(
+        label,
+        'expected "linear", "ease-in", "ease-out" or "ease-in-out"',
+      )
+    }
+
+    return value
   }
 
   private parseTransition(value: unknown, label: string): Transition {
@@ -583,6 +655,19 @@ export class CompositionParser {
         )
       }
     }
+  }
+
+  private assertKnownKeys(
+    value: Record<string, unknown>,
+    allowed: string[],
+    label: string,
+  ): void {
+    const unknownKey = Object.keys(value).find((key) => !allowed.includes(key))
+    if (unknownKey === undefined) {
+      return
+    }
+
+    throw this.invalid(label, `unexpected field "${unknownKey}"`)
   }
 
   private invalid(label: string, expected: string): Error {

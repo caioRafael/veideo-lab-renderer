@@ -122,6 +122,29 @@ describe('buildRenderPlan', () => {
     assert.equal(clip?.volume, 1)
   })
 
+  it('places scene audio on the overlapped visual start of a crossfade', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'image',
+            source: 'b.png',
+            duration: 5,
+            transition: { type: 'crossfade', duration: 1 },
+            audio: [{ source: 'voice.mp3', role: 'focus', start: 0 }],
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const [clip] = getAudioItems(plan)
+    assert.equal(plan.duration, 9)
+    assert.equal(clip?.start, 4)
+    assert.equal(clip?.duration, 5)
+  })
+
   it('keeps original audio from a video scene', () => {
     const plan = buildRenderPlan(
       compositionWith({
@@ -144,6 +167,35 @@ describe('buildRenderPlan', () => {
         source: path.join(mediaPaths.videos, 'clip.mp4'),
         start: 4,
         duration: 8,
+        volume: 1,
+      },
+    ])
+  })
+
+  it('keeps original video audio on the overlapped visual start of a crossfade', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 5,
+            keepAudio: true,
+            transition: { type: 'crossfade', duration: 1 },
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.equal(plan.duration, 9)
+    assert.deepEqual(getAudioItems(plan), [
+      {
+        id: 'audio-video-0',
+        source: path.join(mediaPaths.videos, 'clip.mp4'),
+        start: 4,
+        duration: 5,
         volume: 1,
       },
     ])
@@ -492,5 +544,63 @@ describe('buildRenderPlan', () => {
     )
 
     assert.equal(getVideoTrack(plan)?.items[0]?.transform, undefined)
+  })
+
+  it('copies mediaStart and shortMedia without changing scene placement', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 5,
+            mediaStart: 30,
+            shortMedia: 'freeze',
+            transition: { type: 'crossfade', duration: 1 },
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getVideoTrack(plan)?.items ?? []
+    assert.equal(plan.duration, 9)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[0]?.duration, 5)
+    assert.equal(items[1]?.start, 4)
+    assert.equal(items[1]?.duration, 5)
+    assert.equal(items[1]?.mediaStart, 30)
+    assert.equal(items[1]?.shortMedia, 'freeze')
+  })
+
+  it('does not apply mediaStart to keepAudio', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 8,
+            mediaStart: 20,
+            keepAudio: true,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const videoItem = getVideoTrack(plan)?.items[0]
+    assert.equal(videoItem?.start, 0)
+    assert.equal(videoItem?.mediaStart, 20)
+    assert.deepEqual(getAudioItems(plan), [
+      {
+        id: 'audio-video-0',
+        source: path.join(mediaPaths.videos, 'clip.mp4'),
+        start: 0,
+        duration: 8,
+        volume: 1,
+      },
+    ])
   })
 })

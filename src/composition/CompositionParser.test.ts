@@ -1017,6 +1017,34 @@ describe('CompositionParser', () => {
     assert.throws(
       () =>
         parser.parse({
+          scenes: [{ ...validScene, transform: { scale: { to: 1.2 } } }],
+        }),
+      /transform.scale: expected "from" and "to"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { scale: { from: '1', to: 1.2 } },
+            },
+          ],
+        }),
+      /transform.scale.from: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            { ...validScene, transform: { scale: { from: 1, to: null } } },
+          ],
+        }),
+      /transform.scale.to: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
           scenes: [
             { ...validScene, transform: { scale: { from: 0, to: 1.2 } } },
           ],
@@ -1086,6 +1114,219 @@ describe('CompositionParser', () => {
           ],
         }),
       /transform.pan: expected either \{ x, y \} or \{ from, to \}, not both/,
+    )
+  })
+
+  it('rejects unknown fields on transform objects', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { rotate: 15 } }],
+        }),
+      /transform: unexpected field "rotate"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { scale: { from: 1, to: 1.2, curve: 'ease-in' } },
+            },
+          ],
+        }),
+      /transform.scale: unexpected field "curve"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: {
+                pan: { from: { x: 0, y: 0, z: 1 }, to: { x: 1, y: 1 } },
+              },
+            },
+          ],
+        }),
+      /transform.pan.from: unexpected field "z"/,
+    )
+  })
+
+  it('parses easing on animated values and defaults to linear when omitted', () => {
+    const omitted = parser.parse({
+      scenes: [{ ...validScene, transform: { scale: { from: 1, to: 1.2 } } }],
+    })
+    const linear = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { scale: { from: 1, to: 1.2, easing: 'linear' } },
+        },
+      ],
+    })
+    const easeIn = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { scale: { from: 1, to: 1.5, easing: 'ease-in' } },
+        },
+      ],
+    })
+    const easeOut = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { zoom: { from: 1, to: 1.4, easing: 'ease-out' } },
+        },
+      ],
+    })
+    const easeInOut = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            x: { from: 0, to: 80, easing: 'ease-in-out' },
+            pan: {
+              from: { x: 0, y: 0 },
+              to: { x: 40, y: 10 },
+              easing: 'ease-out',
+            },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(omitted.scenes[0]?.transform, {
+      scale: { from: 1, to: 1.2 },
+    })
+    assert.deepEqual(linear.scenes[0]?.transform?.scale, {
+      from: 1,
+      to: 1.2,
+      easing: 'linear',
+    })
+    assert.deepEqual(easeIn.scenes[0]?.transform?.scale, {
+      from: 1,
+      to: 1.5,
+      easing: 'ease-in',
+    })
+    assert.deepEqual(easeOut.scenes[0]?.transform?.zoom, {
+      from: 1,
+      to: 1.4,
+      easing: 'ease-out',
+    })
+    assert.deepEqual(easeInOut.scenes[0]?.transform, {
+      x: { from: 0, to: 80, easing: 'ease-in-out' },
+      pan: {
+        from: { x: 0, y: 0 },
+        to: { x: 40, y: 10 },
+        easing: 'ease-out',
+      },
+    })
+  })
+
+  it('rejects invalid easing values', () => {
+    const invalid = ['ease', 'bounce', 'spring', 'foo', null, 123, {}]
+    for (const easing of invalid) {
+      assert.throws(
+        () =>
+          parser.parse({
+            scenes: [
+              {
+                ...validScene,
+                transform: { scale: { from: 1, to: 2, easing } },
+              },
+            ],
+          }),
+        /transform.scale.easing: expected "linear", "ease-in", "ease-out" or "ease-in-out"/,
+      )
+    }
+  })
+
+  it('omits mediaStart and shortMedia by default', () => {
+    const composition = parser.parse({
+      scenes: [{ type: 'video', source: 'clip.mp4', duration: 5 }],
+    })
+
+    assert.equal(composition.scenes[0]?.mediaStart, undefined)
+    assert.equal(composition.scenes[0]?.shortMedia, undefined)
+  })
+
+  it('parses mediaStart zero and a positive offset', () => {
+    const zero = parser.parse({
+      scenes: [
+        { type: 'video', source: 'clip.mp4', duration: 5, mediaStart: 0 },
+      ],
+    })
+    const offset = parser.parse({
+      scenes: [
+        { type: 'video', source: 'clip.mp4', duration: 5, mediaStart: 10 },
+      ],
+    })
+
+    assert.equal(zero.scenes[0]?.mediaStart, 0)
+    assert.equal(offset.scenes[0]?.mediaStart, 10)
+  })
+
+  it('rejects invalid mediaStart values', () => {
+    const invalid = [-1, Number.NaN, Infinity, -Infinity, null, '10', {}]
+    for (const mediaStart of invalid) {
+      assert.throws(
+        () =>
+          parser.parse({
+            scenes: [
+              { type: 'video', source: 'clip.mp4', duration: 5, mediaStart },
+            ],
+          }),
+        /mediaStart: expected a value greater than or equal to 0/,
+      )
+    }
+  })
+
+  it('rejects mediaStart on an image scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, mediaStart: 2 }],
+        }),
+      /mediaStart: expected to be used only on video scenes/,
+    )
+  })
+
+  it('parses shortMedia policies', () => {
+    for (const shortMedia of ['error', 'loop', 'freeze'] as const) {
+      const composition = parser.parse({
+        scenes: [
+          { type: 'video', source: 'clip.mp4', duration: 5, shortMedia },
+        ],
+      })
+
+      assert.equal(composition.scenes[0]?.shortMedia, shortMedia)
+    }
+  })
+
+  it('rejects invalid shortMedia values', () => {
+    const invalid = ['repeat', 'hold', 'something', null, 123]
+    for (const shortMedia of invalid) {
+      assert.throws(
+        () =>
+          parser.parse({
+            scenes: [
+              { type: 'video', source: 'clip.mp4', duration: 5, shortMedia },
+            ],
+          }),
+        /shortMedia: expected "error", "loop" or "freeze"/,
+      )
+    }
+  })
+
+  it('rejects shortMedia on an image scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, shortMedia: 'loop' }],
+        }),
+      /shortMedia: expected to be used only on video scenes/,
     )
   })
 })

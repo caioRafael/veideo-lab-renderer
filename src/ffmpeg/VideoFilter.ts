@@ -1,3 +1,9 @@
+import type { EasingName } from '../interfaces/easing'
+import {
+  DEFAULT_MEDIA_START,
+  DEFAULT_SHORT_MEDIA,
+  loopCopyCount,
+} from '../interfaces/media-timing'
 import type { VideoItem } from '../interfaces/render-plan'
 import {
   hasPlacementTransform,
@@ -21,15 +27,32 @@ export class VideoFilter {
   prepare(inputLabel: string, outputLabel: string, item: VideoItem): string {
     const resolved = resolveTransform(item.transform)
     const cropPrefix = this.cropPrefix(resolved)
+    const looped = this.loopedInput(inputLabel, outputLabel, item)
+
+    if (looped !== undefined) {
+      const rest = hasPlacementTransform(resolved)
+        ? this.placeOnCanvas(
+            looped.label,
+            outputLabel,
+            cropPrefix,
+            resolved,
+            item.duration,
+          )
+        : `[${looped.label}]${cropPrefix}${this.canvasNormalize()}[${outputLabel}]`
+
+      return `${looped.chains.join(';')};${rest}`
+    }
+
+    const mediaPrefix = this.mediaTimePrefix(item)
 
     if (!hasPlacementTransform(resolved)) {
-      return `[${inputLabel}]${cropPrefix}${this.canvasNormalize()}[${outputLabel}]`
+      return `[${inputLabel}]${mediaPrefix}${cropPrefix}${this.canvasNormalize()}[${outputLabel}]`
     }
 
     return this.placeOnCanvas(
       inputLabel,
       outputLabel,
-      cropPrefix,
+      `${mediaPrefix}${cropPrefix}`,
       resolved,
       item.duration,
     )
@@ -81,6 +104,85 @@ export class VideoFilter {
     return `scale=${this.width}:${this.height}:force_original_aspect_ratio=decrease`
   }
 
+  private loopedInput(
+    inputLabel: string,
+    outputLabel: string,
+    item: VideoItem,
+  ): { label: string; chains: string[] } | undefined {
+    if (
+      item.mediaType !== 'video' ||
+      (item.shortMedia ?? DEFAULT_SHORT_MEDIA) !== 'loop'
+    ) {
+      return undefined
+    }
+
+    const copies = loopCopyCount(item)
+    if (copies === undefined || copies <= 1) {
+      return undefined
+    }
+
+    const splitLabels = Array.from(
+      { length: copies },
+      (_, index) => `${outputLabel}l${index}`,
+    )
+    const loopedLabel = `${outputLabel}loop`
+
+    return {
+      label: loopedLabel,
+      chains: [
+        `[${inputLabel}]setpts=PTS-STARTPTS,split=${copies}${splitLabels
+          .map((label) => `[${label}]`)
+          .join('')}`,
+        `${splitLabels
+          .map((label) => `[${label}]`)
+          .join(
+            '',
+          )}concat=n=${copies}:v=1:a=0,trim=duration=${item.duration},setpts=PTS-STARTPTS[${loopedLabel}]`,
+      ],
+    }
+  }
+
+  private mediaTimePrefix(item: VideoItem): string {
+    const filters = this.mediaTimeFilters(item)
+    if (filters.length === 0) {
+      return ''
+    }
+
+    return `${filters.join(',')},`
+  }
+
+  private mediaTimeFilters(item: VideoItem): string[] {
+    if (item.mediaType !== 'video') {
+      return []
+    }
+
+    const mediaStart = item.mediaStart ?? DEFAULT_MEDIA_START
+    const policy = item.shortMedia ?? DEFAULT_SHORT_MEDIA
+
+    if (policy === 'loop') {
+      return [
+        'setpts=PTS-STARTPTS',
+        `trim=duration=${item.duration}`,
+        'setpts=PTS-STARTPTS',
+      ]
+    }
+
+    if (policy === 'freeze') {
+      return [
+        'setpts=PTS-STARTPTS',
+        `tpad=stop_mode=clone:stop_duration=${item.duration}`,
+        `trim=duration=${item.duration}`,
+        'setpts=PTS-STARTPTS',
+      ]
+    }
+
+    if (mediaStart > 0) {
+      return ['setpts=PTS-STARTPTS']
+    }
+
+    return []
+  }
+
   private cropPrefix(resolved: ResolvedTransform): string {
     if (resolved.crop === undefined) {
       return ''
@@ -100,7 +202,7 @@ export class VideoFilter {
     const fitLabel = `${outputLabel}fit`
     const bgLabel = `${outputLabel}bg`
     const chains: string[] = [
-      `[${inputLabel}]${cropPrefix}${this.fitScale()},setsar=1[${fitLabel}]`,
+      `[${inputLabel}]${cropPrefix}${this.fitScale()},setsar=1,setpts=PTS-STARTPTS[${fitLabel}]`,
     ]
 
     const overlayLabel = this.pushContentScale(
@@ -115,7 +217,7 @@ export class VideoFilter {
       `color=c=black:s=${this.width}x${this.height}:r=${this.fps}:d=${duration},format=yuv420p,setsar=1[${bgLabel}]`,
     )
     chains.push(
-      `[${bgLabel}][${overlayLabel}]overlay=${this.overlayPosition(resolved.x, resolved.y, duration)}:shortest=1,setsar=1,fps=${this.fps},format=yuv420p[${outputLabel}]`,
+      `[${bgLabel}][${overlayLabel}]overlay=${this.overlayPosition(resolved, duration)}:shortest=1,setsar=1,fps=${this.fps},format=yuv420p[${outputLabel}]`,
     )
 
     return chains.join(';')
@@ -172,35 +274,44 @@ export class VideoFilter {
   }
 
   private overlayPosition(
-    x: ResolvedScalar,
-    y: ResolvedScalar,
+    resolved: ResolvedTransform,
     duration: number,
   ): string {
-    if (!isAnimatedScalar(x) && !isAnimatedScalar(y)) {
-      return `${this.centerOffset('main_w-overlay_w', x.from)}:${this.centerOffset('main_h-overlay_h', y.from)}`
+    const xAnimated =
+      isAnimatedScalar(resolved.x) || isAnimatedScalar(resolved.panX)
+    const yAnimated =
+      isAnimatedScalar(resolved.y) || isAnimatedScalar(resolved.panY)
+
+    if (!xAnimated && !yAnimated) {
+      return `${this.centerOffset('main_w-overlay_w', resolved.x.from + resolved.panX.from)}:${this.centerOffset('main_h-overlay_h', resolved.y.from + resolved.panY.from)}`
     }
 
-    return `x='${this.offsetExpr('main_w-overlay_w', x, duration)}':y='${this.offsetExpr('main_h-overlay_h', y, duration)}'`
+    return `x='${this.offsetExpr('main_w-overlay_w', resolved.x, resolved.panX, duration)}':y='${this.offsetExpr('main_h-overlay_h', resolved.y, resolved.panY, duration)}'`
   }
 
   private offsetExpr(
     dimensionExpr: string,
-    offset: ResolvedScalar,
+    position: ResolvedScalar,
+    pan: ResolvedScalar,
     duration: number,
   ): string {
-    const center = `(${dimensionExpr})/2`
+    const terms = [`(${dimensionExpr})/2`]
+    this.pushDisplacementTerm(terms, position, duration)
+    this.pushDisplacementTerm(terms, pan, duration)
+    return terms.join('+')
+  }
 
-    if (!isAnimatedScalar(offset)) {
-      if (offset.from === 0) {
-        return center
-      }
-      if (offset.from > 0) {
-        return `${center}+${offset.from}`
-      }
-      return `${center}${offset.from}`
+  private pushDisplacementTerm(
+    terms: string[],
+    value: ResolvedScalar,
+    duration: number,
+  ): void {
+    if (!isAnimatedScalar(value) && value.from === 0) {
+      return
     }
 
-    return `${center}+${this.lerpExpr(offset, duration)}`
+    const expr = this.lerpExpr(value, duration)
+    terms.push(expr.startsWith('-') ? `(${expr})` : expr)
   }
 
   private centerOffset(dimensionExpr: string, offset: number): string {
@@ -219,7 +330,7 @@ export class VideoFilter {
       return this.formatNumber(value.from)
     }
 
-    const progress = `min(max(if(isnan(t),0,t)/${duration},0),1)`
+    const progress = this.easingProgressExpr(value.easing, duration)
     const delta = this.formatNumber(value.to - value.from)
     const from = this.formatNumber(value.from)
 
@@ -228,6 +339,21 @@ export class VideoFilter {
     }
 
     return `(${from}+(${delta})*${progress})`
+  }
+
+  private easingProgressExpr(easing: EasingName, duration: number): string {
+    const tNorm = `min(max(if(isnan(t),0,t)/${duration},0),1)`
+
+    switch (easing) {
+      case 'linear':
+        return tNorm
+      case 'ease-in':
+        return `pow(${tNorm},2)`
+      case 'ease-out':
+        return `(1-pow(1-(${tNorm}),2))`
+      case 'ease-in-out':
+        return `if(lt(${tNorm},0.5),2*pow(${tNorm},2),1-pow(-2*(${tNorm})+2,2)/2)`
+    }
   }
 
   private formatNumber(value: number): string {

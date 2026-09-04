@@ -1,0 +1,15 @@
+{
+  "output": "media-trim.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 5,
+      "mediaStart": 20,
+      "keepAudio": true
+    }
+  ]
+}

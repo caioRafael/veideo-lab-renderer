@@ -22,6 +22,17 @@ function item(transform?: Transform): VideoItem {
   return videoItem
 }
 
+function videoClip(overrides: Partial<VideoItem> = {}): VideoItem {
+  return {
+    id: 'video-0',
+    source: '/tmp/clip.mp4',
+    start: 0,
+    duration: 5,
+    mediaType: 'video',
+    ...overrides,
+  }
+}
+
 function filterSteps(graph: string): string[] {
   return graph.split(';')
 }
@@ -74,7 +85,7 @@ describe('VideoFilter', () => {
     const steps = filterSteps(filter.prepare('0:v', 'v0', item({ scale: 1.2 })))
 
     assert.deepEqual(steps, [
-      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[v0fit]',
+      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1,setpts=PTS-STARTPTS[v0fit]',
       '[v0fit]scale=iw*1.2:ih*1.2[v0z]',
       'color=c=black:s=1920x1080:r=25:d=5,format=yuv420p,setsar=1[v0bg]',
       '[v0bg][v0z]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:shortest=1,setsar=1,fps=25,format=yuv420p[v0]',
@@ -87,7 +98,7 @@ describe('VideoFilter', () => {
     )
 
     assert.deepEqual(steps, [
-      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[v0fit]',
+      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1,setpts=PTS-STARTPTS[v0fit]',
       'color=c=black:s=1920x1080:r=25:d=5,format=yuv420p,setsar=1[v0bg]',
       '[v0bg][v0fit]overlay=(main_w-overlay_w)/2+100:(main_h-overlay_h)/2-50:shortest=1,setsar=1,fps=25,format=yuv420p[v0]',
     ])
@@ -127,7 +138,7 @@ describe('VideoFilter', () => {
     )
 
     assert.deepEqual(steps, [
-      '[0:v]crop=1600:900:8:4,scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[v0fit]',
+      '[0:v]crop=1600:900:8:4,scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1,setpts=PTS-STARTPTS[v0fit]',
       '[v0fit]scale=iw*1.2:ih*1.2[v0z]',
       'color=c=black:s=1920x1080:r=25:d=5,format=yuv420p,setsar=1[v0bg]',
       '[v0bg][v0z]overlay=(main_w-overlay_w)/2+100:(main_h-overlay_h)/2+50:shortest=1,setsar=1,fps=25,format=yuv420p[v0]',
@@ -142,7 +153,7 @@ describe('VideoFilter', () => {
 
     assert.equal(
       steps[0],
-      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[v0fit]',
+      '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1,setpts=PTS-STARTPTS[v0fit]',
     )
     assert.equal(
       steps[1],
@@ -261,8 +272,45 @@ describe('VideoFilter', () => {
     assert.match(
       graph,
       new RegExp(
-        `overlay=x='\\(main_w-overlay_w\\)/2\\+\\(150\\*${escapeRegex(progress)}\\)':y='\\(main_h-overlay_h\\)/2\\+\\(75\\*${escapeRegex(progress)}\\)'`,
+        `overlay=x='\\(main_w-overlay_w\\)/2\\+\\(100\\*${escapeRegex(progress)}\\)\\+\\(50\\*${escapeRegex(progress)}\\)':y='\\(main_h-overlay_h\\)/2\\+\\(50\\*${escapeRegex(progress)}\\)\\+\\(25\\*${escapeRegex(progress)}\\)'`,
       ),
+    )
+  })
+
+  it('normalizes content timestamps before animated expressions', () => {
+    const steps = filterSteps(
+      filter.prepare('0:v', 'v0', item({ scale: { from: 1, to: 1.2 } })),
+    )
+
+    assert.match(steps[0] ?? '', /setsar=1,setpts=PTS-STARTPTS\[v0fit\]$/)
+  })
+
+  it('treats from === to as a static scale filter', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({ scale: { from: 1.2, to: 1.2 } }),
+    )
+
+    assert.match(graph, /scale=iw\*1\.2:ih\*1\.2/)
+    assert.equal(graph.includes('eval=frame'), false)
+    assert.equal(graph.includes('if(isnan(t)'), false)
+  })
+
+  it('multiplies static scale by an animated zoom expression', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({
+        scale: 1.2,
+        zoom: { from: 1, to: 1.1 },
+      }),
+    )
+    const factor = `1.2*(1+(0.1)*${progress})`
+
+    assert.equal(
+      filterSteps(graph)[1],
+      `[v0fit]scale=w='trunc(iw*(${factor})/2)*2':h='trunc(ih*(${factor})/2)*2':eval=frame[v0z]`,
     )
   })
 
@@ -280,7 +328,7 @@ describe('VideoFilter', () => {
 
     assert.equal(
       steps[0],
-      '[0:v]crop=1100:950:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[v0fit]',
+      '[0:v]crop=1100:950:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1,setpts=PTS-STARTPTS[v0fit]',
     )
     assert.match(steps[1] ?? '', /scale=w='trunc\(iw\*/)
   })
@@ -309,5 +357,269 @@ describe('VideoFilter', () => {
       filter.fadeIn('v1', 'fi1', 1),
       '[v1]fade=t=in:st=0:d=1:c=black[fi1]',
     )
+  })
+
+  it('uses the same expression when easing is omitted or linear', () => {
+    const omitted = filter.prepare(
+      '0:v',
+      'v0',
+      item({ scale: { from: 1, to: 1.2 } }),
+    )
+    const linear = filter.prepare(
+      '0:v',
+      'v0',
+      item({ scale: { from: 1, to: 1.2, easing: 'linear' } }),
+    )
+
+    assert.equal(omitted, linear)
+    assert.equal(omitted.includes('pow('), false)
+  })
+
+  it('animates scale with ease-in as pow of the clamped t', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({ scale: { from: 1, to: 2, easing: 'ease-in' } }),
+    )
+    const factor = `(1+(1)*pow(${progress},2))`
+
+    assert.equal(
+      filterSteps(graph)[1],
+      `[v0fit]scale=w='trunc(iw*(${factor})/2)*2':h='trunc(ih*(${factor})/2)*2':eval=frame[v0z]`,
+    )
+  })
+
+  it('animates zoom with ease-out', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({ zoom: { from: 1, to: 1.5, easing: 'ease-out' } }),
+    )
+
+    assert.match(graph, /eval=frame/)
+    assert.match(
+      graph,
+      new RegExp(
+        `scale=w='trunc\\(iw\\*\\(\\(1\\+\\(0\\.5\\)\\*\\(1-pow\\(1-\\(${escapeRegex(progress)}\\),2\\)\\)\\)\\)/2\\)\\*2'`,
+      ),
+    )
+  })
+
+  it('multiplies scale ease-in by zoom ease-out instead of easing the product', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({
+        scale: { from: 1, to: 1.2, easing: 'ease-in' },
+        zoom: { from: 1, to: 1.1, easing: 'ease-out' },
+      }),
+    )
+    const factor = `(1+(0.2)*pow(${progress},2))*(1+(0.1)*(1-pow(1-(${progress}),2)))`
+
+    assert.equal(
+      filterSteps(graph)[1],
+      `[v0fit]scale=w='trunc(iw*(${factor})/2)*2':h='trunc(ih*(${factor})/2)*2':eval=frame[v0z]`,
+    )
+  })
+
+  it('animates each axis with its own easing', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({
+        x: { from: 0, to: 300, easing: 'ease-in-out' },
+        y: { from: 0, to: -100, easing: 'ease-out' },
+      }),
+    )
+
+    assert.match(
+      graph,
+      new RegExp(
+        `overlay=x='\\(main_w-overlay_w\\)/2\\+\\(300\\*if\\(lt\\(${escapeRegex(progress)},0\\.5\\),2\\*pow\\(${escapeRegex(progress)},2\\),1-pow\\(-2\\*\\(${escapeRegex(progress)}\\)\\+2,2\\)/2\\)\\)'`,
+      ),
+    )
+    assert.match(
+      graph,
+      new RegExp(
+        `y='\\(main_h-overlay_h\\)/2\\+\\(-100\\*\\(1-pow\\(1-\\(${escapeRegex(progress)}\\),2\\)\\)\\)'`,
+      ),
+    )
+  })
+
+  it('animates pan with a single easing on both axes', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({
+        pan: {
+          from: { x: -300, y: 0 },
+          to: { x: 300, y: 100 },
+          easing: 'ease-in-out',
+        },
+      }),
+    )
+    const eased = `if(lt(${progress},0.5),2*pow(${progress},2),1-pow(-2*(${progress})+2,2)/2)`
+
+    assert.match(
+      graph,
+      new RegExp(
+        `overlay=x='\\(main_w-overlay_w\\)/2\\+\\(-300\\+\\(600\\)\\*${escapeRegex(eased)}\\)'`,
+      ),
+    )
+    assert.match(
+      graph,
+      new RegExp(
+        `y='\\(main_h-overlay_h\\)/2\\+\\(100\\*${escapeRegex(eased)}\\)'`,
+      ),
+    )
+  })
+
+  it('adds position and pan with independent easing expressions', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({
+        x: { from: 0, to: 100, easing: 'ease-in' },
+        pan: {
+          from: { x: 0, y: 0 },
+          to: { x: 50, y: 0 },
+          easing: 'ease-out',
+        },
+      }),
+    )
+
+    assert.match(
+      graph,
+      new RegExp(
+        `overlay=x='\\(main_w-overlay_w\\)/2\\+\\(100\\*pow\\(${escapeRegex(progress)},2\\)\\)\\+\\(50\\*\\(1-pow\\(1-\\(${escapeRegex(progress)}\\),2\\)\\)\\)'`,
+      ),
+    )
+  })
+
+  it('keeps from === to static even when easing is set', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      item({ scale: { from: 1.2, to: 1.2, easing: 'ease-in-out' } }),
+    )
+
+    assert.match(graph, /scale=iw\*1\.2:ih\*1\.2/)
+    assert.equal(graph.includes('eval=frame'), false)
+    assert.equal(graph.includes('pow('), false)
+  })
+
+  it('applies easing on a video scene with eval=frame', () => {
+    const graph = filter.prepare('0:v', 'v0', {
+      id: 'video-0',
+      source: '/tmp/clip.mp4',
+      start: 0,
+      duration: 5,
+      mediaType: 'video',
+      transform: { scale: { from: 1, to: 1.2, easing: 'ease-in' } },
+    })
+
+    assert.match(graph, /setpts=PTS-STARTPTS/)
+    assert.match(graph, /eval=frame/)
+    assert.match(graph, /pow\(/)
+  })
+
+  it('resets timestamps after mediaStart on a video without transform', () => {
+    const graph = filter.prepare('0:v', 'v0', videoClip({ mediaStart: 20 }))
+
+    assert.match(
+      graph,
+      /^\[0:v\]setpts=PTS-STARTPTS,scale=1920:1080:force_original_aspect_ratio=decrease/,
+    )
+  })
+
+  it('keeps the default video path without media timing filters', () => {
+    const graph = filter.prepare('0:v', 'v0', videoClip())
+
+    assert.equal(graph, filter.scale('0:v', 'v0'))
+    assert.equal(graph.includes('trim='), false)
+    assert.equal(graph.includes('tpad='), false)
+  })
+
+  it('trims a looped video to the scene duration', () => {
+    const graph = filter.prepare('0:v', 'v0', videoClip({ shortMedia: 'loop' }))
+
+    assert.match(
+      graph,
+      /^\[0:v\]setpts=PTS-STARTPTS,trim=duration=5,setpts=PTS-STARTPTS,scale=/,
+    )
+  })
+
+  it('repeats the available media segment when sourceDuration is known', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      videoClip({
+        duration: 10,
+        mediaStart: 3,
+        shortMedia: 'loop',
+        sourceDuration: 6,
+      }),
+    )
+
+    assert.match(graph, /split=4\[v0l0\]\[v0l1\]\[v0l2\]\[v0l3\]/)
+    assert.match(
+      graph,
+      /\[v0l0\]\[v0l1\]\[v0l2\]\[v0l3\]concat=n=4:v=1:a=0,trim=duration=10,setpts=PTS-STARTPTS\[v0loop\]/,
+    )
+    assert.match(graph, /\[v0loop\]scale=1920:1080/)
+  })
+
+  it('freezes the last frame to fill the scene duration', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      videoClip({ shortMedia: 'freeze' }),
+    )
+
+    assert.match(
+      graph,
+      /^\[0:v\]setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=5,trim=duration=5,setpts=PTS-STARTPTS,scale=/,
+    )
+  })
+
+  it('animates against scene time even when mediaStart is not zero', () => {
+    const graph = filter.prepare(
+      '0:v',
+      'v0',
+      videoClip({
+        mediaStart: 30,
+        transform: {
+          scale: { from: 1, to: 1.3, easing: 'ease-in-out' },
+          x: { from: -200, to: 200, easing: 'ease-out' },
+          y: { from: 0, to: 40 },
+          zoom: { from: 1, to: 1.1 },
+          pan: {
+            from: { x: 0, y: 0 },
+            to: { x: 20, y: -10 },
+            easing: 'ease-in',
+          },
+        },
+      }),
+    )
+
+    assert.match(graph, /^\[0:v\]setpts=PTS-STARTPTS,scale=/)
+    assert.match(graph, new RegExp(escapeRegex(progress)))
+    assert.equal(graph.includes('/30'), false)
+  })
+
+  it('keeps animation on scene time for loop and freeze', () => {
+    for (const shortMedia of ['loop', 'freeze'] as const) {
+      const graph = filter.prepare(
+        '0:v',
+        'v0',
+        videoClip({
+          shortMedia,
+          transform: { scale: { from: 1, to: 1.5, easing: 'ease-in' } },
+        }),
+      )
+
+      assert.match(graph, new RegExp(escapeRegex(progress)))
+      assert.match(graph, /color=c=black:s=1920x1080:r=25:d=5/)
+    }
   })
 })

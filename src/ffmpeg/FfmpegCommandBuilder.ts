@@ -1,4 +1,9 @@
 import {
+  availableMediaDuration,
+  DEFAULT_MEDIA_START,
+  DEFAULT_SHORT_MEDIA,
+} from '../interfaces/media-timing'
+import {
   getAudioItems,
   getOverlayItems,
   getTextItems,
@@ -116,7 +121,38 @@ export class FfmpegCommandBuilder {
       return
     }
 
+    const mediaStart = item.mediaStart ?? DEFAULT_MEDIA_START
+    const policy = item.shortMedia ?? DEFAULT_SHORT_MEDIA
+
+    if (policy === 'loop') {
+      const available = availableMediaDuration(item)
+
+      if (mediaStart > 0) {
+        args.push('-ss', String(mediaStart))
+      }
+
+      if (available !== undefined && available > 0) {
+        args.push('-t', this.formatDuration(available), '-i', item.source)
+        return
+      }
+
+      args.push('-stream_loop', '-1', '-i', item.source)
+      return
+    }
+
+    if (mediaStart > 0) {
+      args.push('-ss', String(mediaStart))
+    }
+
     args.push('-t', String(item.duration), '-i', item.source)
+  }
+
+  private formatDuration(value: number): string {
+    if (Number.isInteger(value)) {
+      return String(value)
+    }
+
+    return String(Number(value.toPrecision(12)))
   }
 
   private pushVideoComposition(

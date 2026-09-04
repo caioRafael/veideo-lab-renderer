@@ -1,3 +1,4 @@
+import type { ShortMediaPolicy } from './media-timing'
 import type { SceneType } from './scene'
 import type { PositionValue } from './text'
 import type { Transform } from './transform'
@@ -14,6 +15,9 @@ export interface RenderItem {
 
 export interface VideoItem extends RenderItem {
   mediaType: SceneType
+  mediaStart?: number
+  shortMedia?: ShortMediaPolicy
+  sourceDuration?: number
   incomingTransition?: Transition
   transform?: Transform
 }

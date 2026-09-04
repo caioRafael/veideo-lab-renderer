@@ -1,0 +1,15 @@
+{
+  "output": "media-freeze.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 6,
+      "mediaStart": 164,
+      "shortMedia": "freeze"
+    }
+  ]
+}
