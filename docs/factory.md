@@ -1,5 +1,7 @@
 # Video Factory
 
+Uso prático (primeiro lote, pastas, checklist): [gerar-videos.md](gerar-videos.md).
+
 Camada de orquestração **acima** do renderer. Não monta filtros FFmpeg e não resolve templates — só transforma compositions em jobs, limita concorrência e agrega o resultado.
 
 ```text

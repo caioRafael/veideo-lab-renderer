@@ -1,5 +1,7 @@
 # Templates
 
+Uso prático (primeiro render, arquivo de variáveis): [gerar-videos.md](gerar-videos.md).
+
 O Template Engine transforma um documento reutilizável em uma `Composition` normal. Ele não renderiza vídeo e não conhece FFmpeg.
 
 ```text

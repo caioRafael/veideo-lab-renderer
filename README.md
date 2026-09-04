@@ -29,6 +29,8 @@ Coloque as mídias nas pastas de `input/`:
 - vídeos de cena → `input/videos/`
 - fontes (opcional) → `input/fonts/`
 
+**Guia rápido para gerar MP4s:** [docs/gerar-videos.md](docs/gerar-videos.md) — setup, primeiro JSON, template e lote (Factory).
+
 ## Uso
 
 ```bash
@@ -605,6 +607,7 @@ src/
 
 ## Documentação
 
+- [docs/gerar-videos.md](docs/gerar-videos.md) — como gerar vídeos (setup, JSON, template, lote)
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
 - [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, effects, áudio)
 - [docs/render-pipeline.md](docs/render-pipeline.md) — ciclo de vida do render
