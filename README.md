@@ -42,11 +42,14 @@ pnpm dev -- compositions/texts.json
 pnpm dev -- compositions/overlay.json
 pnpm dev -- compositions/text-and-overlay.json
 pnpm dev -- compositions/full-timeline.json
+pnpm dev -- compositions/video-and-photos.json
+pnpm dev -- compositions/video-timeline.json
+pnpm dev -- compositions/video-photos.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
 
-Antes de renderizar, o programa imprime o comando FFmpeg montado.
+Antes de renderizar, o programa imprime o comando FFmpeg montado. Em caso de erro (JSON inválido, asset ausente, FFmpeg), a CLI termina com código `1`.
 
 ## Lint e testes
 
@@ -54,6 +57,7 @@ Antes de renderizar, o programa imprime o comando FFmpeg montado.
 pnpm lint
 pnpm lint:fix
 pnpm test
+pnpm typecheck
 ```
 
 O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier). Os testes unitários usam o runner nativo do Node (`node:test`) via `tsx`.
@@ -98,8 +102,8 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | Campo | Default |
 |---|---|
 | `output` | `output.mp4` |
-| `width` | `1920` |
-| `height` | `1080` |
+| `width` | `1920` (inteiro par) |
+| `height` | `1080` (inteiro par) |
 | `fps` | `25` |
 | `texts[].start` | `0` |
 | `texts[].x` / `y` | `center` |
@@ -113,7 +117,8 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | `type` | `image` ou `video` |
 | `source` | nome do arquivo na pasta correspondente |
 | `duration` | duração em segundos |
-| `audio` | (opcional) áudios da cena |
+| `audio` | (opcional) áudios extras da cena |
+| `keepAudio` | (vídeo) mantém o áudio original do arquivo |
 
 ### Áudio
 
@@ -184,6 +189,9 @@ Camadas, de baixo para cima: vídeo → overlays de imagem → texto.
 - `compositions/overlay.json` — imagem sobreposta em posições diferentes
 - `compositions/text-and-overlay.json` — texto + overlay juntos
 - `compositions/full-timeline.json` — cenas, áudio, texto e overlay
+- `compositions/video-and-photos.json` — foto, clipe de vídeo e foto, com áudio e textos
+- `compositions/video-timeline.json` — vídeo, fotos, áudio global/cena, texto e overlay
+- `compositions/video-photos.json` — fotos e vídeo, com o áudio original do clipe
 
 ## Arquitetura
 
@@ -212,20 +220,18 @@ Overlay Track   imagens sobrepostas
 Text Track      drawtext (ou PNG rasterizado)
 ```
 
-O CLI só lê a composição e dispara o renderer. O `Renderer` orquestra as peças especializadas:
+O CLI lê a composição, valida, imprime o comando FFmpeg e dispara o renderer. O `Renderer` orquestra as peças especializadas:
 
 ```text
 Renderer
  ├── MediaResolver
  ├── FontResolver
  ├── AudioTimeline
- ├── VideoFilter
- ├── AudioFilter
- ├── OverlayFilter
- ├── TextFilter
  ├── FfmpegCommandBuilder
  └── FfmpegExecutor
 ```
+
+O fallback de texto (PNG) é escolhido pelo `Renderer` quando o FFmpeg não tem `drawtext`. A CLI não precisa saber qual estratégia foi usada.
 
 ## Estrutura
 

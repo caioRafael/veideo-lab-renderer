@@ -1,0 +1,54 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 4 },
+    { "type": "video", "source": "gloria-eterna.mp4", "duration": 8 },
+    { "type": "image", "source": "input.png", "duration": 4 }
+  ],
+  "audio": [
+    {
+      "source": "audio.mp3",
+      "role": "background",
+      "start": 0,
+      "duration": 16
+    }
+  ],
+  "texts": [
+    {
+      "content": "Abertura",
+      "start": 0,
+      "duration": 4,
+      "x": "center",
+      "y": 140,
+      "fontSize": 64,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
+    },
+    {
+      "content": "Glória Eterna",
+      "start": 4,
+      "duration": 8,
+      "x": "center",
+      "y": 900,
+      "fontSize": 48,
+      "color": "#FFD400",
+      "font": "Georgia",
+      "italic": true
+    },
+    {
+      "content": "Encerramento",
+      "start": 12,
+      "duration": 4,
+      "x": "center",
+      "y": "center",
+      "fontSize": 56,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
+    }
+  ]
+}

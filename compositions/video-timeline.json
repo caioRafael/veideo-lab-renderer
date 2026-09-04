@@ -1,0 +1,88 @@
+{
+  "output": "output.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 4 },
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 8,
+      "audio": [
+        {
+          "source": "audio2.mp3",
+          "role": "focus",
+          "start": 0,
+          "duration": 8
+        }
+      ]
+    },
+    { "type": "image", "source": "input.png", "duration": 4 },
+    { "type": "image", "source": "flamengo.png", "duration": 4 }
+  ],
+  "audio": [
+    {
+      "source": "audio.mp3",
+      "role": "background",
+      "start": 0,
+      "duration": 20
+    }
+  ],
+  "overlays": [
+    {
+      "source": "input.png",
+      "start": 16,
+      "duration": 4,
+      "x": 80,
+      "y": 80,
+      "width": 220,
+      "height": 220
+    }
+  ],
+  "texts": [
+    {
+      "content": "Video Lab",
+      "start": 0,
+      "duration": 4,
+      "x": "center",
+      "y": 140,
+      "fontSize": 72,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
+    },
+    {
+      "content": "Glória Eterna",
+      "start": 4,
+      "duration": 8,
+      "x": "center",
+      "y": 140,
+      "fontSize": 56,
+      "color": "#FFD400",
+      "font": "Georgia",
+      "italic": true
+    },
+    {
+      "content": "Cena com foto",
+      "start": 12,
+      "duration": 4,
+      "x": "center",
+      "y": 920,
+      "fontSize": 40,
+      "color": "#FFFFFF",
+      "font": "Arial"
+    },
+    {
+      "content": "Logo + encerramento",
+      "start": 16,
+      "duration": 4,
+      "x": 340,
+      "y": 140,
+      "fontSize": 48,
+      "color": "#FFD400",
+      "font": "Courier New",
+      "bold": true
+    }
+  ]
+}
