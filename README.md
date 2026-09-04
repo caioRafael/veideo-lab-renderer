@@ -2,7 +2,7 @@
 
 Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
 
-Você descreve cenas (imagem/vídeo), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
+Você descreve cenas (imagem/vídeo), transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
 
 ## Requisitos
 
@@ -203,7 +203,14 @@ A transição é declarada na **cena de destino** e descreve o corte entre a cen
 - `fade` — a cena anterior some para preto e a próxima nasce do preto (`A → black → B`). As cenas não se sobrepõem; a duração total continua a soma das cenas.
 - `crossfade` — as duas cenas se misturam. Com 5s + 5s e 1s de crossfade, o MP4 dura **9s** (`B.start = 4`).
 
-A primeira cena não pode ter `transition`. A duração tem que ser menor que as duas cenas adjacentes. Só o Video Track é afetado; áudio, texto e overlay seguem a própria timeline.
+| JSON | Semântica | Duração final (5s + 5s, T=1s) | FFmpeg |
+|---|---|---|---|
+| `fade` | A → preto → B | 10s | `fade=t=out` + `fade=t=in` + `concat` |
+| `crossfade` | mistura A e B | 9s | `settb=AVTB` + `xfade` |
+
+A primeira cena não pode ter `transition`. A duração tem que ser **estritamente menor** que as duas cenas adjacentes. Só o Video Track é afetado; áudio, texto e overlay seguem a própria timeline (absoluta). `keepAudio` acompanha o start visual da cena, inclusive no overlap do crossfade.
+
+A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan guarda `incomingTransition` (`type` + `duration`), sem sintaxe FFmpeg. Detalhes do filter graph: [ffmpeg-guide.md](ffmpeg-guide.md).
 
 ### Exemplos prontos
 
@@ -242,7 +249,7 @@ FFmpeg
 O `RenderPlan` é uma timeline de tracks independentes:
 
 ```text
-Video Track     cenas em sequência
+Video Track     cenas em sequência; overlap só com crossfade
 Audio Track     clips com start absoluto
 Overlay Track   imagens sobrepostas
 Text Track      drawtext (ou PNG rasterizado)
@@ -285,3 +292,4 @@ src/
 ## Documentação
 
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
+- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, áudio)
