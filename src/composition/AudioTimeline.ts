@@ -1,6 +1,7 @@
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
+import { scenePlacements } from './visualDuration'
 
 const DEFAULT_VOLUME: Record<AudioRole, number> = {
   background: 0.3,
@@ -25,8 +26,11 @@ export class AudioTimeline {
       })
     }
 
-    let sceneStart = 0
-    for (const scene of composition.scenes) {
+    const placements = scenePlacements(composition.scenes)
+
+    for (const [index, scene] of composition.scenes.entries()) {
+      const sceneStart = placements[index]?.start ?? 0
+
       for (const clip of scene.audio ?? []) {
         const relativeStart = clip.start ?? 0
         const absoluteStart = sceneStart + relativeStart
@@ -43,7 +47,6 @@ export class AudioTimeline {
           volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
         })
       }
-      sceneStart += scene.duration
     }
 
     return clips

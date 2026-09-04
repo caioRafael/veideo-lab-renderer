@@ -75,6 +75,28 @@ describe('AudioTimeline', () => {
     ])
   })
 
+  it('places scene audio on the visual start when the destination has a crossfade', () => {
+    const clips = timeline.collect(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          {
+            type: 'image',
+            source: 'b.png',
+            duration: 5,
+            transition: { type: 'crossfade', duration: 1 },
+            audio: [{ source: 'sfx.mp3', role: 'focus', start: 0 }],
+          },
+        ],
+      }),
+      9,
+    )
+
+    assert.deepEqual(clips, [
+      { source: 'sfx.mp3', start: 4, duration: 5, volume: 1 },
+    ])
+  })
+
   it('collects audio across multiple scenes', () => {
     const clips = timeline.collect(
       compositionWith({
