@@ -142,6 +142,45 @@ describe('CompositionParser', () => {
     ])
   })
 
+  it('parses font family and style', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+      texts: [
+        {
+          content: 'Title',
+          duration: 4,
+          font: 'Georgia',
+          bold: true,
+          italic: true,
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.texts?.[0], {
+      content: 'Title',
+      start: 0,
+      duration: 4,
+      x: 'center',
+      y: 'center',
+      fontSize: 48,
+      color: '#FFFFFF',
+      font: 'Georgia',
+      bold: true,
+      italic: true,
+    })
+  })
+
+  it('rejects an invalid font name', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, font: '' }],
+        }),
+      /font must be a non-empty string/,
+    )
+  })
+
   it('parses texts and overlays from the public schema', () => {
     const composition = parser.parse({
       scenes: [validScene],

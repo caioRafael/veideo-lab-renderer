@@ -134,7 +134,6 @@ function createTextTracks(
     return []
   }
 
-  const fontPath = fontResolver.resolve()
   const items: TextItem[] = texts.map((text, index) => ({
     id: `text-${index}`,
     content: text.content,
@@ -144,7 +143,11 @@ function createTextTracks(
     y: text.y,
     fontSize: text.fontSize,
     color: text.color,
-    fontPath,
+    fontPath: fontResolver.resolve({
+      ...(text.font === undefined ? {} : { family: text.font }),
+      ...(text.bold === undefined ? {} : { bold: text.bold }),
+      ...(text.italic === undefined ? {} : { italic: text.italic }),
+    }),
   }))
 
   return [

@@ -175,7 +175,21 @@ export class CompositionParser {
       throw new Error(`${label}.color must be a string`)
     }
 
-    return {
+    if (value.font !== undefined) {
+      if (typeof value.font !== 'string' || value.font.length === 0) {
+        throw new Error(`${label}.font must be a non-empty string`)
+      }
+    }
+
+    if (value.bold !== undefined && typeof value.bold !== 'boolean') {
+      throw new Error(`${label}.bold must be a boolean`)
+    }
+
+    if (value.italic !== undefined && typeof value.italic !== 'boolean') {
+      throw new Error(`${label}.italic must be a boolean`)
+    }
+
+    const clip: TextClip = {
       content: value.content,
       start: typeof value.start === 'number' ? value.start : 0,
       duration,
@@ -187,6 +201,20 @@ export class CompositionParser {
           : DEFAULT_TEXT_FONT_SIZE,
       color: typeof value.color === 'string' ? value.color : DEFAULT_TEXT_COLOR,
     }
+
+    if (typeof value.font === 'string') {
+      clip.font = value.font
+    }
+
+    if (typeof value.bold === 'boolean') {
+      clip.bold = value.bold
+    }
+
+    if (typeof value.italic === 'boolean') {
+      clip.italic = value.italic
+    }
+
+    return clip
   }
 
   private parseOverlayClip(value: unknown, label: string): OverlayClip {

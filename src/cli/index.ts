@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CompositionParser } from '../composition/CompositionParser'
 import type { MediaPaths } from '../interfaces/media-paths'
+import { FontResolver } from '../media/FontResolver'
 import { MediaResolver } from '../media/MediaResolver'
 import { Renderer } from '../renderer/Renderer'
 
@@ -34,7 +35,8 @@ const rawComposition: unknown = JSON.parse(
 
 const composition = new CompositionParser().parse(rawComposition)
 const mediaResolver = new MediaResolver(mediaPaths)
-const renderer = new Renderer({ mediaResolver })
+const fontResolver = new FontResolver(path.join(rootDir, 'input', 'fonts'))
+const renderer = new Renderer({ mediaResolver, fontResolver })
 
 console.log('Composition:', compositionPath)
 

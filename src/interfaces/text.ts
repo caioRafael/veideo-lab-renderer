@@ -8,4 +8,7 @@ export interface TextClip {
   y: PositionValue
   fontSize: number
   color: string
+  font?: string
+  bold?: boolean
+  italic?: boolean
 }

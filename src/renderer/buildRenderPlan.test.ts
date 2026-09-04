@@ -10,6 +10,7 @@ import {
   getTextItems,
   getVideoTrack,
 } from '../interfaces/render-plan'
+import { FontResolver } from '../media/FontResolver'
 import { MediaResolver } from '../media/MediaResolver'
 import { buildRenderPlan } from './buildRenderPlan'
 
@@ -208,6 +209,50 @@ describe('buildRenderPlan', () => {
     assert.equal(item?.fontSize, 72)
     assert.equal(item?.color, '#FFFFFF')
     assert.ok(item?.fontPath)
+  })
+
+  it('resolves a distinct font file per text style', () => {
+    const fontsDir = path.join(tmpRoot, 'fonts')
+    fs.mkdirSync(fontsDir, { recursive: true })
+    fs.writeFileSync(path.join(fontsDir, 'Display.ttf'), 'font')
+    fs.writeFileSync(path.join(fontsDir, 'Display Bold.ttf'), 'font')
+
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        texts: [
+          {
+            content: 'Regular',
+            start: 0,
+            duration: 4,
+            x: 'center',
+            y: 100,
+            fontSize: 48,
+            color: '#FFFFFF',
+            font: 'Display.ttf',
+          },
+          {
+            content: 'Bold',
+            start: 4,
+            duration: 4,
+            x: 'center',
+            y: 100,
+            fontSize: 48,
+            color: '#FFFFFF',
+            font: 'Display',
+            bold: true,
+          },
+        ],
+      }),
+      resolver,
+      undefined,
+      new FontResolver(fontsDir),
+    )
+
+    const items = getTextItems(plan)
+    assert.equal(items[0]?.fontPath, path.join(fontsDir, 'Display.ttf'))
+    assert.equal(items[1]?.fontPath, path.join(fontsDir, 'Display Bold.ttf'))
+    assert.notEqual(items[0]?.fontPath, items[1]?.fontPath)
   })
 
   it('places overlays on an overlay track with a resolved source', () => {

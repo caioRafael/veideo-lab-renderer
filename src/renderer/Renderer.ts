@@ -8,12 +8,14 @@ import {
 import { formatFfmpegCommand } from '../ffmpeg/formatFfmpegCommand'
 import type { Composition } from '../interfaces/composition'
 import { getTextItems, type RenderPlan } from '../interfaces/render-plan'
+import { FontResolver } from '../media/FontResolver'
 import type { MediaResolver } from '../media/MediaResolver'
 import { rasterizeTextTrack } from '../media/rasterizeTextTrack'
 import { buildRenderPlan } from './buildRenderPlan'
 
 export interface RendererOptions {
   mediaResolver: MediaResolver
+  fontResolver?: FontResolver
   audioTimeline?: AudioTimeline
   commandBuilder?: FfmpegCommandBuilder
   executor?: FfmpegExecutor
@@ -26,12 +28,14 @@ export interface RenderResult {
 
 export class Renderer {
   private readonly mediaResolver: MediaResolver
+  private readonly fontResolver: FontResolver
   private readonly audioTimeline: AudioTimeline
   private readonly commandBuilder: FfmpegCommandBuilder
   private readonly executor: FfmpegExecutor
 
   constructor(options: RendererOptions) {
     this.mediaResolver = options.mediaResolver
+    this.fontResolver = options.fontResolver ?? new FontResolver()
     this.audioTimeline = options.audioTimeline ?? new AudioTimeline()
     this.commandBuilder = options.commandBuilder ?? new FfmpegCommandBuilder()
     this.executor = options.executor ?? new SpawnFfmpegExecutor()
@@ -58,6 +62,7 @@ export class Renderer {
       composition,
       this.mediaResolver,
       this.audioTimeline,
+      this.fontResolver,
     )
 
     if (getTextItems(plan).length === 0 || ffmpegSupportsDrawtext()) {
