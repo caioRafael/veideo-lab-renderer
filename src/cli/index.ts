@@ -33,16 +33,21 @@ async function main(): Promise<void> {
   const mediaResolver = new MediaResolver(mediaPaths)
   const fontResolver = new FontResolver(path.join(rootDir, 'input', 'fonts'))
   const renderer = new Renderer({ mediaResolver, fontResolver })
-  const prepared = renderer.prepare(composition)
 
-  console.log('Composition:', compositionPath)
-  console.log('FFmpeg command:')
-  console.log(formatFfmpegCommand(prepared.args))
-  console.log('')
+  try {
+    const prepared = renderer.prepare(composition)
 
-  await renderer.execute(prepared.args)
+    console.log('Composition:', compositionPath)
+    console.log('FFmpeg command:')
+    console.log(formatFfmpegCommand(prepared.args))
+    console.log('')
 
-  console.log(`Rendered: ${prepared.outputPath}`)
+    await renderer.execute(prepared.args)
+
+    console.log(`Rendered: ${prepared.outputPath}`)
+  } finally {
+    renderer.cleanupTemporaryFiles()
+  }
 }
 
 try {

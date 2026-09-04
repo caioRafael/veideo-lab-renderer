@@ -92,4 +92,18 @@ describe('Renderer', () => {
       path.join(mediaPaths.outputVideos, 'result.mp4'),
     )
   })
+
+  it('cleans temporary files after execution fails', async () => {
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      executor: {
+        async execute() {
+          throw new Error('ffmpeg failed')
+        },
+      },
+    })
+
+    await assert.rejects(() => renderer.execute(['-y']), /ffmpeg failed/)
+    assert.doesNotThrow(() => renderer.cleanupTemporaryFiles())
+  })
 })

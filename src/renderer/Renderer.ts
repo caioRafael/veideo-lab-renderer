@@ -9,7 +9,10 @@ import type { Composition } from '../interfaces/composition'
 import { getTextItems, type RenderPlan } from '../interfaces/render-plan'
 import { FontResolver } from '../media/FontResolver'
 import type { MediaResolver } from '../media/MediaResolver'
-import { rasterizeTextTrack } from '../media/rasterizeTextTrack'
+import {
+  rasterizeTextTrack,
+  removeTemporaryDirectory,
+} from '../media/rasterizeTextTrack'
 import { buildRenderPlan } from './buildRenderPlan'
 
 export interface RendererOptions {
@@ -31,6 +34,7 @@ export class Renderer {
   private readonly audioTimeline: AudioTimeline
   private readonly commandBuilder: FfmpegCommandBuilder
   private readonly executor: FfmpegExecutor
+  private temporaryDirectory: string | undefined
 
   constructor(options: RendererOptions) {
     this.mediaResolver = options.mediaResolver
@@ -41,6 +45,7 @@ export class Renderer {
   }
 
   prepare(composition: Composition): RenderResult {
+    this.cleanupTemporaryFiles()
     const plan = this.preparePlan(composition)
 
     return {
@@ -50,13 +55,26 @@ export class Renderer {
   }
 
   async execute(args: string[]): Promise<void> {
-    await this.executor.execute(args)
+    try {
+      await this.executor.execute(args)
+    } finally {
+      this.cleanupTemporaryFiles()
+    }
   }
 
   async render(composition: Composition): Promise<RenderResult> {
     const result = this.prepare(composition)
     await this.execute(result.args)
     return result
+  }
+
+  cleanupTemporaryFiles(): void {
+    if (this.temporaryDirectory === undefined) {
+      return
+    }
+
+    removeTemporaryDirectory(this.temporaryDirectory)
+    this.temporaryDirectory = undefined
   }
 
   private preparePlan(composition: Composition): RenderPlan {
@@ -71,6 +89,8 @@ export class Renderer {
       return plan
     }
 
-    return rasterizeTextTrack(plan)
+    const rasterized = rasterizeTextTrack(plan)
+    this.temporaryDirectory = rasterized.temporaryDirectory
+    return rasterized.plan
   }
 }

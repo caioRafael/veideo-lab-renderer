@@ -19,16 +19,43 @@ const SCRIPT_PATH = path.join(
   'render-text.swift',
 )
 
-export function rasterizeTextTrack(plan: RenderPlan): RenderPlan {
+export interface RasterizedTextResult {
+  plan: RenderPlan
+  temporaryDirectory: string
+}
+
+export function rasterizeTextTrack(plan: RenderPlan): RasterizedTextResult {
   const texts = getTextItems(plan)
   if (texts.length === 0) {
-    return plan
+    throw new Error('rasterizeTextTrack requires at least one text item')
   }
 
-  const extraOverlays = texts.map((item, index) =>
-    rasterizeTextItem(plan, item, index),
-  )
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-text-'))
+  const extraOverlays: OverlayItem[] = []
 
+  try {
+    for (const [index, item] of texts.entries()) {
+      extraOverlays.push(rasterizeTextItem(plan, item, index, outputDir))
+    }
+  } catch (error) {
+    removeTemporaryDirectory(outputDir)
+    throw error
+  }
+
+  return {
+    plan: mergeTextOverlays(plan, extraOverlays),
+    temporaryDirectory: outputDir,
+  }
+}
+
+export function removeTemporaryDirectory(directory: string): void {
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+function mergeTextOverlays(
+  plan: RenderPlan,
+  extraOverlays: OverlayItem[],
+): RenderPlan {
   const tracksWithoutText = plan.tracks.filter((track) => track.type !== 'text')
   const overlayTrack = tracksWithoutText.find(
     (track): track is OverlayTrack => track.type === 'overlay',
@@ -41,6 +68,7 @@ export function rasterizeTextTrack(plan: RenderPlan): RenderPlan {
         if (track.type !== 'overlay') {
           return track
         }
+
         return {
           ...track,
           items: [...track.items, ...extraOverlays],
@@ -66,9 +94,8 @@ function rasterizeTextItem(
   plan: RenderPlan,
   item: TextItem,
   index: number,
+  outputDir: string,
 ): OverlayItem {
-  const outputDir = path.join(os.tmpdir(), 'video-lab-text')
-  fs.mkdirSync(outputDir, { recursive: true })
   const outputPath = path.join(outputDir, `${item.id}-${index}.png`)
 
   const result = spawnSync(
