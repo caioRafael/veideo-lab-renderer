@@ -1,27 +1,31 @@
-# Guia: JSON → comando FFmpeg
+# Guia: JSON → MP4
 
-Como montar um vídeo a partir de um JSON de composição.
+Como a composição vira um vídeo no video-lab.
 
-## Ideia geral
-
-O JSON descreve a timeline. O FFmpeg recebe um comando com esta anatomia:
+## Pipeline
 
 ```text
-ffmpeg -y
-  [inputs de cenas e áudios]
-  -filter_complex "..."
-  -map "[vout]" -map "[aout]"
-  -c:v libx264 -c:a aac -t TOTAL
-  output.mp4
+JSON
+→ loadComposition / CompositionParser
+→ Renderer.prepare
+→ RenderPlan
+→ Tracks
+→ FfmpegCommandBuilder
+→ FfmpegExecutor
+→ FFmpeg
+→ MP4
 ```
 
-| Parte do comando | Vem do JSON |
-|---|---|
-| Inputs de imagem/vídeo | `scenes[]` |
-| Inputs de áudio | `audio[]` + `scenes[].audio` |
-| `concat` de vídeo | ordem e `duration` das cenas |
-| `atrim` / `adelay` / `volume` / `amix` | áudios globais e por cena |
-| `-t`, resolução, fps | soma das durations + `width`/`height`/`fps` |
+O JSON descreve a timeline. O parser valida e aplica defaults. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
+
+```text
+Video Track     cenas em sequência (image ou video)
+Audio Track     clips com start absoluto
+Overlay Track   imagens sobrepostas
+Text Track      drawtext, ou PNG rasterizado se o FFmpeg não tiver libfreetype
+```
+
+Camadas visuais, de baixo para cima: vídeo → overlays → texto.
 
 ---
 
@@ -47,20 +51,36 @@ Arquivo exemplo: `compositions/example.json`
 }
 ```
 
-### Campos
+Os `source` são só o nome do arquivo. A pasta vem do tipo:
 
-- `scenes`: lista visual em sequência
-  - `type`: `image` ou `video`
-  - `source`: nome do arquivo em `input/images/` ou `input/videos/`
-  - `duration`: segundos
-  - `audio?`: áudios da cena (`start` relativo ao início da cena)
-- `audio`: áudios globais (`start` absoluto na timeline)
-- `role`:
-  - `background` → volume padrão `0.3`
-  - `focus` → volume padrão `1.0`
-- `volume` opcional sobrescreve o padrão do `role`
+| Tipo | Pasta |
+|---|---|
+| `image` / overlay | `input/images/` |
+| `video` | `input/videos/` |
+| áudio extra | `input/audios/` |
+| fonte | `input/fonts/` ou fonte do sistema |
+| `output` | `output/videos/` |
 
-### Timeline deste exemplo
+### Cenas
+
+- `type`: `image` ou `video`
+- `source`, `duration`
+- `audio?`: áudios extras da cena (`start` relativo à cena)
+- `keepAudio?`: só em `video`; mantém a faixa original do arquivo
+
+### Áudio extra
+
+- global (`audio` na raiz, `start` absoluto) ou por cena
+- `role`: `background` (vol. 0.3) ou `focus` (vol. 1.0)
+- `volume` opcional sobrescreve o `role`
+
+### Textos e overlays
+
+Opcionais, com `start` absoluto na timeline. Ver `compositions/texts.json`, `overlay.json` e `full-timeline.json`.
+
+Exemplos com cena de vídeo: `compositions/video-photos.json`, `video-and-photos.json`, `video-timeline.json`.
+
+### Timeline de `example.json`
 
 ```text
 0s ──────── 4s ──────── 8s ────────────── 14s
@@ -71,31 +91,25 @@ Arquivo exemplo: `compositions/example.json`
 
 ---
 
-## Como cada campo vira comando
+## Como o RenderPlan vira FFmpeg
+
+O `RenderPlan` não contém `-filter_complex` nem `drawtext`. Isso fica no builder.
 
 ### 1. Inputs de cena
 
-JSON:
-
-```json
-{ "type": "image", "source": "flamengo.png", "duration": 4 }
-```
-
-FFmpeg:
+Imagem:
 
 ```bash
 -loop 1 -t 4 -i input/images/flamengo.png
 ```
 
-Para `type: "video"`:
+Vídeo:
 
 ```bash
--t 6 -i input/videos/clip.mp4
+-t 8 -i input/videos/gloria-eterna.mp4
 ```
 
-### 2. Preparar e concatenar vídeo
-
-Cada cena é padronizada:
+### 2. Padronizar e concatenar vídeo
 
 ```text
 [0:v]scale=1920:1080:force_original_aspect_ratio=decrease,
@@ -103,70 +117,30 @@ Cada cena é padronizada:
      setsar=1,fps=25,format=yuv420p[v0]
 ```
 
-Depois:
-
 ```text
 [v0][v1][v2]concat=n=3:v=1:a=0[vout]
 ```
 
-### 3. Inputs e filtros de áudio
+Se houver overlay ou texto, o concat sai em `[vbase]` e as camadas seguintes terminam em `[vout]`.
 
-JSON global:
+### 3. Áudio
 
-```json
-{ "source": "audio2.mp3", "role": "background", "start": 0, "duration": 8 }
-```
+Cada item da audio track vira `-i` + `atrim` / `adelay` / `volume` / `apad`. Vários itens entram em `amix`. Sem áudio, o builder usa `anullsrc`.
 
-Vira input:
+`keepAudio: true` coloca a faixa do próprio MP4 na audio track, no `start` da cena.
 
-```bash
--i input/audios/audio2.mp3
-```
+### 4. Overlays e textos
 
-E filtro:
+Overlays: `scale` + `overlay` com `enable='between(t,start,end)'`.
 
-```text
-[3:a]atrim=0:8,asetpts=PTS-STARTPTS,volume=0.3,adelay=0|0,apad=whole_dur=14,...[a0]
-```
-
-JSON com `start: 8`:
-
-```text
-[4:a]atrim=0:6,...,volume=1,adelay=8000|8000,apad=whole_dur=14,...[a1]
-```
-
-- `atrim` — corta o pedaço usado
-- `volume` — background mais baixo, focus mais alto
-- `adelay` — posiciona o áudio na timeline (ms)
-- `apad` — completa até a duração total (silêncio no resto)
-
-Áudio de cena:
-
-```json
-{
-  "type": "image",
-  "source": "input.png",
-  "duration": 4,
-  "audio": [{ "source": "sfx.mp3", "role": "focus", "start": 1 }]
-}
-```
-
-Se a cena começa em `t=4`, esse áudio começa em `4 + 1 = 5s` absolutos.
-
-### 4. Misturar áudios
-
-```text
-[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]
-```
-
-Assim background e focus podem tocar juntos; o foco sobressai pelo volume.
+Textos: `drawtext` quando o FFmpeg tem o filtro. Sem `drawtext`, o `Renderer` rasteriza cada texto em PNG temporário, trata como overlay e apaga os arquivos depois do FFmpeg (também se o render falhar).
 
 ### 5. Exportar
 
 ```bash
--map "[vout]" -map "[aout]" \
--c:v libx264 -c:a aac \
--t 14 -pix_fmt yuv420p \
+-map "[vout]" -map "[aout]"
+-c:v libx264 -c:a aac
+-t TOTAL -pix_fmt yuv420p
 output/videos/output.mp4
 ```
 
@@ -175,13 +149,24 @@ output/videos/output.mp4
 ## Diagrama
 
 ```text
-scenes[0] image ─ t=4 ─► prepare ─► [v0] ─┐
-scenes[1] image ─ t=4 ─► prepare ─► [v1] ─┼─ concat ─► [vout] ─┐
-scenes[2] image ─ t=6 ─► prepare ─► [v2] ─┘                   │
-                                                              ├─► output.mp4
-audio[0]  atrim/volume/adelay ─► [a0] ─┐                      │
-                                       ├─ amix ─► [aout] ─────┘
-audio[1]  atrim/volume/adelay ─► [a1] ─┘
+CLI
+ ↓
+loadComposition / CompositionParser
+ ↓
+Renderer.prepare → RenderPlan (tracks)
+ ↓
+FfmpegCommandBuilder → args[]
+ ↓
+FfmpegExecutor (spawn)
+ ↓
+MP4
+```
+
+```text
+scenes image/video ─► Video Track ─► scale/pad/fps ─► concat ─► [vbase]
+overlays            ─► Overlay Track ─► scale + overlay ───────► [vout]
+texts               ─► Text Track ─► drawtext ou PNG overlay ──┘
+audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ───────► [aout]
 ```
 
 ---
@@ -190,8 +175,9 @@ audio[1]  atrim/volume/adelay ─► [a1] ─┘
 
 ```bash
 pnpm dev
-# ou
 pnpm dev -- compositions/example.json
+pnpm dev -- compositions/full-timeline.json
+pnpm dev -- compositions/video-photos.json
 ```
 
-O programa imprime o comando FFmpeg montado antes de executar — útil para estudar o que o JSON gerou.
+A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
