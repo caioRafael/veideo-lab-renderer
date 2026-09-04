@@ -7,4 +7,5 @@ export interface Scene {
   source: string
   duration: number
   audio?: AudioClip[]
+  keepAudio?: boolean
 }

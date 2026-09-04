@@ -26,11 +26,13 @@ export function buildRenderPlan(
     0,
   )
 
+  const videoTrack = createVideoTrack(composition, mediaResolver)
   const tracks = [
-    createVideoTrack(composition, mediaResolver),
+    videoTrack,
     ...createAudioTracks(
       audioTimeline.collect(composition, duration),
       mediaResolver,
+      composition,
     ),
     ...createOverlayTracks(composition, mediaResolver),
     ...createTextTracks(composition, fontResolver),
@@ -74,18 +76,22 @@ function createVideoTrack(
 function createAudioTracks(
   clips: AbsoluteAudio[],
   mediaResolver: MediaResolver,
+  composition: Composition,
 ): AudioTrack[] {
-  if (clips.length === 0) {
+  const items: AudioItem[] = [
+    ...createVideoSceneAudio(composition, mediaResolver),
+    ...clips.map((clip, index) => ({
+      id: `audio-${index}`,
+      source: mediaResolver.resolveAudio(clip.source),
+      start: clip.start,
+      duration: clip.duration,
+      volume: clip.volume,
+    })),
+  ]
+
+  if (items.length === 0) {
     return []
   }
-
-  const items: AudioItem[] = clips.map((clip, index) => ({
-    id: `audio-${index}`,
-    source: mediaResolver.resolveAudio(clip.source),
-    start: clip.start,
-    duration: clip.duration,
-    volume: clip.volume,
-  }))
 
   return [
     {
@@ -94,6 +100,32 @@ function createAudioTracks(
       items,
     },
   ]
+}
+
+function createVideoSceneAudio(
+  composition: Composition,
+  mediaResolver: MediaResolver,
+): AudioItem[] {
+  const items: AudioItem[] = []
+  let start = 0
+  let index = 0
+
+  for (const scene of composition.scenes) {
+    if (scene.type === 'video' && scene.keepAudio === true) {
+      items.push({
+        id: `audio-video-${index}`,
+        source: mediaResolver.resolveSceneSource(scene),
+        start,
+        duration: scene.duration,
+        volume: 1,
+      })
+      index += 1
+    }
+
+    start += scene.duration
+  }
+
+  return items
 }
 
 function createOverlayTracks(

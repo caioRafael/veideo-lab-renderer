@@ -60,11 +60,11 @@ describe('CompositionParser', () => {
   })
 
   it('rejects a non-object composition', () => {
-    assert.throws(() => parser.parse([]), /JSON object/)
+    assert.throws(() => parser.parse([]), /expected a JSON object/)
   })
 
   it('rejects a composition without scenes', () => {
-    assert.throws(() => parser.parse({}), /non-empty scenes/)
+    assert.throws(() => parser.parse({}), /non-empty scenes array/)
   })
 
   it('rejects an invalid scene type', () => {
@@ -73,7 +73,7 @@ describe('CompositionParser', () => {
         parser.parse({
           scenes: [{ ...validScene, type: 'gif' }],
         }),
-      /type must be "image" or "video"/,
+      /expected "image" or "video"/,
     )
   })
 
@@ -83,7 +83,7 @@ describe('CompositionParser', () => {
         parser.parse({
           scenes: [{ type: 'image', duration: 4 }],
         }),
-      /source is required/,
+      /source: expected a non-empty string/,
     )
   })
 
@@ -93,7 +93,7 @@ describe('CompositionParser', () => {
         parser.parse({
           scenes: [{ ...validScene, duration: 0 }],
         }),
-      /duration must be > 0/,
+      /duration: expected a value greater than 0/,
     )
   })
 
@@ -104,7 +104,7 @@ describe('CompositionParser', () => {
           scenes: [validScene],
           audio: [{ source: 'track.mp3', role: 'voice' }],
         }),
-      /role must be "background" or "focus"/,
+      /role: expected "background" or "focus"/,
     )
   })
 
@@ -121,6 +121,31 @@ describe('CompositionParser', () => {
     assert.deepEqual(composition.scenes[0]?.audio, [
       { source: 'sfx.mp3', role: 'focus', start: 1 },
     ])
+  })
+
+  it('parses keepAudio on a video scene', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          type: 'video',
+          source: 'clip.mp4',
+          duration: 8,
+          keepAudio: true,
+        },
+      ],
+    })
+
+    assert.equal(composition.scenes[0]?.keepAudio, true)
+  })
+
+  it('rejects keepAudio on an image scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, keepAudio: true }],
+        }),
+      /keepAudio: expected to be used only on video scenes/,
+    )
   })
 
   it('parses texts with defaults', () => {
@@ -177,7 +202,7 @@ describe('CompositionParser', () => {
           scenes: [validScene],
           texts: [{ content: 'Hi', duration: 4, font: '' }],
         }),
-      /font must be a non-empty string/,
+      /font: expected a non-empty string/,
     )
   })
 
@@ -235,7 +260,7 @@ describe('CompositionParser', () => {
           scenes: [validScene],
           texts: [{ content: '', duration: 4 }],
         }),
-      /content is required/,
+      /content: expected a non-empty string/,
     )
   })
 
@@ -246,7 +271,88 @@ describe('CompositionParser', () => {
           scenes: [validScene],
           texts: [{ content: 'Hi', duration: 4, x: 'left' }],
         }),
-      /must be a number or "center"/,
+      /expected a number or "center"/,
+    )
+  })
+
+  it('rejects invalid canvas and fps values', () => {
+    assert.throws(
+      () => parser.parse({ width: 0, scenes: [validScene] }),
+      /Invalid width: expected a value greater than 0/,
+    )
+    assert.throws(
+      () => parser.parse({ height: 1081, scenes: [validScene] }),
+      /Invalid height: expected an even integer greater than 0/,
+    )
+    assert.throws(
+      () => parser.parse({ fps: -1, scenes: [validScene] }),
+      /Invalid fps: expected a value greater than 0/,
+    )
+    assert.throws(
+      () => parser.parse({ fps: Infinity, scenes: [validScene] }),
+      /Invalid fps: expected a value greater than 0/,
+    )
+  })
+
+  it('rejects a present output that is not a non-empty string', () => {
+    assert.throws(
+      () => parser.parse({ output: '', scenes: [validScene] }),
+      /Invalid output: expected a non-empty string/,
+    )
+  })
+
+  it('rejects an invalid volume', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          audio: [{ source: 'track.mp3', role: 'focus', volume: -1 }],
+        }),
+      /volume: expected a value greater than or equal to 0/,
+    )
+  })
+
+  it('rejects texts and overlays that start outside the timeline', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Late', start: 4, duration: 1 }],
+        }),
+      /texts\[0\].start: expected a value within the composition duration \(4s\)/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          overlays: [
+            {
+              source: 'logo.png',
+              start: 8,
+              duration: 1,
+              x: 0,
+              y: 0,
+              width: 10,
+              height: 10,
+            },
+          ],
+        }),
+      /overlays\[0\].start: expected a value within the composition duration \(4s\)/,
+    )
+  })
+
+  it('rejects scene audio that starts outside the scene', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              audio: [{ source: 'sfx.mp3', role: 'focus', start: 4 }],
+            },
+          ],
+        }),
+      /audio\[0\].start: expected a value within the scene duration \(4s\)/,
     )
   })
 })

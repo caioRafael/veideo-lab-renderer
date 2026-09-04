@@ -59,7 +59,7 @@ describe('MediaResolver', () => {
   })
 
   it('throws when a media file does not exist', () => {
-    assert.throws(() => resolver.resolveAudio('missing.mp3'), /Audio not found/)
+    assert.throws(() => resolver.resolveAudio('missing.mp3'), /Asset not found/)
   })
 
   it('resolves the output path and creates the directory', () => {

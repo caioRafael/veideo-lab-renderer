@@ -19,7 +19,7 @@ export class MediaResolver {
   }
 
   resolveAudio(source: string): string {
-    return this.resolveMediaFile(this.mediaPaths.audios, source, 'Audio')
+    return this.resolveMediaFile(this.mediaPaths.audios, source)
   }
 
   resolveOverlay(source: string): string {
@@ -33,17 +33,17 @@ export class MediaResolver {
   }
 
   private resolveImage(source: string): string {
-    return this.resolveMediaFile(this.mediaPaths.images, source, 'Image')
+    return this.resolveMediaFile(this.mediaPaths.images, source)
   }
 
   private resolveVideoInput(source: string): string {
-    return this.resolveMediaFile(this.mediaPaths.videos, source, 'Video')
+    return this.resolveMediaFile(this.mediaPaths.videos, source)
   }
 
-  private resolveMediaFile(dir: string, source: string, kind: string): string {
+  private resolveMediaFile(dir: string, source: string): string {
     const resolved = path.join(dir, source)
     if (!fs.existsSync(resolved)) {
-      throw new Error(`${kind} not found: ${source} (${resolved})`)
+      throw new Error(`Asset not found: ${resolved}`)
     }
     return resolved
   }

@@ -122,6 +122,33 @@ describe('buildRenderPlan', () => {
     assert.equal(clip?.volume, 1)
   })
 
+  it('keeps original audio from a video scene', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 4 },
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 8,
+            keepAudio: true,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getAudioItems(plan), [
+      {
+        id: 'audio-video-0',
+        source: path.join(mediaPaths.videos, 'clip.mp4'),
+        start: 4,
+        duration: 8,
+        volume: 1,
+      },
+    ])
+  })
+
   it('allows video and audio items to occupy the same time range', () => {
     const plan = buildRenderPlan(
       compositionWith({
@@ -286,5 +313,45 @@ describe('buildRenderPlan', () => {
         height: 280,
       },
     ])
+  })
+
+  it('places multiple overlays on the same track', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        overlays: [
+          {
+            source: 'b.png',
+            start: 1,
+            duration: 4,
+            x: 80,
+            y: 80,
+            width: 120,
+            height: 120,
+          },
+          {
+            source: 'c.png',
+            start: 2,
+            duration: 5,
+            x: 400,
+            y: 80,
+            width: 160,
+            height: 160,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getOverlayItems(plan)
+    assert.equal(items.length, 2)
+    assert.equal(items[0]?.id, 'overlay-0')
+    assert.equal(items[1]?.id, 'overlay-1')
+    assert.equal(items[0]?.start, 1)
+    assert.equal(items[1]?.start, 2)
+    assert.ok(
+      (items[0]?.start ?? 0) + (items[0]?.duration ?? 0) >
+        (items[1]?.start ?? 0),
+    )
   })
 })

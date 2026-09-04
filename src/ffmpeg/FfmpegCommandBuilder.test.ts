@@ -235,6 +235,66 @@ describe('FfmpegCommandBuilder', () => {
     assert.ok(args.includes('/tmp/logo.png'))
   })
 
+  it('overlays multiple images in input order', () => {
+    const args = builder.build(
+      planWith({
+        duration: 8,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 8,
+              mediaType: 'image',
+            },
+          ]),
+          {
+            id: 'overlay',
+            type: 'overlay',
+            items: [
+              {
+                id: 'overlay-0',
+                source: '/tmp/one.png',
+                start: 1,
+                duration: 3,
+                x: 10,
+                y: 10,
+                width: 100,
+                height: 100,
+              },
+              {
+                id: 'overlay-1',
+                source: '/tmp/two.png',
+                start: 2,
+                duration: 4,
+                x: 40,
+                y: 40,
+                width: 80,
+                height: 80,
+              },
+            ],
+          } satisfies OverlayTrack,
+        ],
+      }),
+    )
+
+    assert.ok(args.includes('/tmp/one.png'))
+    assert.ok(args.includes('/tmp/two.png'))
+    assert.ok(args.indexOf('/tmp/one.png') < args.indexOf('/tmp/two.png'))
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(
+      filterComplex,
+      /overlay=10:10:enable='between\(t,1,4\)'\[ovl0\]/,
+    )
+    assert.match(
+      filterComplex,
+      /overlay=40:40:enable='between\(t,2,6\)'\[vout\]/,
+    )
+  })
+
   it('applies drawtext after overlays', () => {
     const args = builder.build(
       planWith({

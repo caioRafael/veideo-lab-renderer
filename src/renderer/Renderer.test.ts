@@ -63,4 +63,33 @@ describe('Renderer', () => {
     assert.ok(result.args.includes(path.join(mediaPaths.audios, 'track.mp3')))
     assert.equal(result.args.at(-1), result.outputPath)
   })
+
+  it('prepares the command without executing FFmpeg', () => {
+    const executed: string[][] = []
+    const executor: FfmpegExecutor = {
+      async execute(args) {
+        executed.push(args)
+      },
+    }
+
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      executor,
+    })
+
+    const prepared = renderer.prepare({
+      output: 'result.mp4',
+      width: 1920,
+      height: 1080,
+      fps: 25,
+      scenes: [{ type: 'image', source: 'frame.png', duration: 4 }],
+    })
+
+    assert.equal(executed.length, 0)
+    assert.equal(prepared.args[0], '-y')
+    assert.equal(
+      prepared.outputPath,
+      path.join(mediaPaths.outputVideos, 'result.mp4'),
+    )
+  })
 })

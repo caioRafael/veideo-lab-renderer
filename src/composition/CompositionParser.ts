@@ -3,29 +3,31 @@ import type { Composition } from '../interfaces/composition'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
 import type { PositionValue, TextClip } from '../interfaces/text'
-
-const DEFAULT_OUTPUT = 'output.mp4'
-const DEFAULT_WIDTH = 1920
-const DEFAULT_HEIGHT = 1080
-const DEFAULT_FPS = 25
-const DEFAULT_TEXT_FONT_SIZE = 48
-const DEFAULT_TEXT_COLOR = '#FFFFFF'
+import { COMPOSITION_DEFAULTS } from './defaults'
 
 export class CompositionParser {
   parse(value: unknown): Composition {
     if (!this.isRecord(value)) {
-      throw new Error('Composition must be a JSON object')
+      throw this.invalid('composition', 'expected a JSON object')
     }
 
     if (!Array.isArray(value.scenes) || value.scenes.length === 0) {
-      throw new Error('Composition must include a non-empty scenes array')
+      throw this.invalid('composition', 'expected a non-empty scenes array')
     }
 
     const composition: Composition = {
-      output: typeof value.output === 'string' ? value.output : DEFAULT_OUTPUT,
-      width: typeof value.width === 'number' ? value.width : DEFAULT_WIDTH,
-      height: typeof value.height === 'number' ? value.height : DEFAULT_HEIGHT,
-      fps: typeof value.fps === 'number' ? value.fps : DEFAULT_FPS,
+      output: this.parseOutput(value.output),
+      width: this.parseDimension(
+        value.width,
+        'width',
+        COMPOSITION_DEFAULTS.width,
+      ),
+      height: this.parseDimension(
+        value.height,
+        'height',
+        COMPOSITION_DEFAULTS.height,
+      ),
+      fps: this.parsePositiveNumber(value.fps, 'fps', COMPOSITION_DEFAULTS.fps),
       scenes: value.scenes.map((scene, index) =>
         this.parseScene(scene, `scenes[${index}]`),
       ),
@@ -33,7 +35,7 @@ export class CompositionParser {
 
     if (value.audio !== undefined) {
       if (!Array.isArray(value.audio)) {
-        throw new Error('audio must be an array')
+        throw this.invalid('audio', 'expected an array')
       }
 
       composition.audio = value.audio.map((clip, audioIndex) =>
@@ -43,7 +45,7 @@ export class CompositionParser {
 
     if (value.texts !== undefined) {
       if (!Array.isArray(value.texts)) {
-        throw new Error('texts must be an array')
+        throw this.invalid('texts', 'expected an array')
       }
 
       composition.texts = value.texts.map((clip, textIndex) =>
@@ -53,7 +55,7 @@ export class CompositionParser {
 
     if (value.overlays !== undefined) {
       if (!Array.isArray(value.overlays)) {
-        throw new Error('overlays must be an array')
+        throw this.invalid('overlays', 'expected an array')
       }
 
       composition.overlays = value.overlays.map((clip, overlayIndex) =>
@@ -61,40 +63,57 @@ export class CompositionParser {
       )
     }
 
+    this.assertItemsFitTimeline(composition)
+
     return composition
   }
 
   private parseScene(value: unknown, label: string): Scene {
     if (!this.isRecord(value)) {
-      throw new Error(`${label} must be an object`)
+      throw this.invalid(label, 'expected an object')
     }
 
     if (!this.isSceneType(value.type)) {
-      throw new Error(`${label}.type must be "image" or "video"`)
-    }
-
-    if (typeof value.source !== 'string' || value.source.length === 0) {
-      throw new Error(`${label}.source is required`)
-    }
-
-    if (typeof value.duration !== 'number' || !(value.duration > 0)) {
-      throw new Error(`${label}.duration must be > 0`)
+      throw this.invalid(`${label}.type`, 'expected "image" or "video"')
     }
 
     const scene: Scene = {
       type: value.type,
-      source: value.source,
-      duration: value.duration,
+      source: this.parseRequiredString(value.source, `${label}.source`),
+      duration: this.parseRequiredPositiveNumber(
+        value.duration,
+        `${label}.duration`,
+      ),
+    }
+
+    if (value.keepAudio !== undefined) {
+      if (value.type !== 'video') {
+        throw this.invalid(
+          `${label}.keepAudio`,
+          'expected to be used only on video scenes',
+        )
+      }
+
+      scene.keepAudio = this.parseBoolean(value.keepAudio, `${label}.keepAudio`)
     }
 
     if (value.audio !== undefined) {
       if (!Array.isArray(value.audio)) {
-        throw new Error(`${label}.audio must be an array`)
+        throw this.invalid(`${label}.audio`, 'expected an array')
       }
 
       scene.audio = value.audio.map((clip, audioIndex) =>
         this.parseAudioClip(clip, `${label}.audio[${audioIndex}]`),
       )
+
+      for (const [audioIndex, clip] of scene.audio.entries()) {
+        if (clip.start !== undefined && clip.start >= scene.duration) {
+          throw this.invalid(
+            `${label}.audio[${audioIndex}].start`,
+            `expected a value within the scene duration (${scene.duration}s)`,
+          )
+        }
+      }
     }
 
     return scene
@@ -102,52 +121,31 @@ export class CompositionParser {
 
   private parseAudioClip(value: unknown, label: string): AudioClip {
     if (!this.isRecord(value)) {
-      throw new Error(`${label} must be an object`)
-    }
-
-    if (typeof value.source !== 'string' || value.source.length === 0) {
-      throw new Error(`${label}.source is required`)
+      throw this.invalid(label, 'expected an object')
     }
 
     if (!this.isAudioRole(value.role)) {
-      throw new Error(`${label}.role must be "background" or "focus"`)
-    }
-
-    if (value.start !== undefined && typeof value.start !== 'number') {
-      throw new Error(`${label}.start must be a number`)
-    }
-
-    if (value.start !== undefined && value.start < 0) {
-      throw new Error(`${label}.start must be >= 0`)
-    }
-
-    if (value.duration !== undefined && typeof value.duration !== 'number') {
-      throw new Error(`${label}.duration must be a number`)
-    }
-
-    if (value.duration !== undefined && !(value.duration > 0)) {
-      throw new Error(`${label}.duration must be > 0`)
-    }
-
-    if (value.volume !== undefined && typeof value.volume !== 'number') {
-      throw new Error(`${label}.volume must be a number`)
+      throw this.invalid(`${label}.role`, 'expected "background" or "focus"')
     }
 
     const clip: AudioClip = {
-      source: value.source,
+      source: this.parseRequiredString(value.source, `${label}.source`),
       role: value.role,
     }
 
-    if (typeof value.start === 'number') {
-      clip.start = value.start
+    if (value.start !== undefined) {
+      clip.start = this.parseNonNegativeNumber(value.start, `${label}.start`)
     }
 
-    if (typeof value.duration === 'number') {
-      clip.duration = value.duration
+    if (value.duration !== undefined) {
+      clip.duration = this.parseRequiredPositiveNumber(
+        value.duration,
+        `${label}.duration`,
+      )
     }
 
-    if (typeof value.volume === 'number') {
-      clip.volume = value.volume
+    if (value.volume !== undefined) {
+      clip.volume = this.parseNonNegativeNumber(value.volume, `${label}.volume`)
     }
 
     return clip
@@ -155,63 +153,41 @@ export class CompositionParser {
 
   private parseTextClip(value: unknown, label: string): TextClip {
     if (!this.isRecord(value)) {
-      throw new Error(`${label} must be an object`)
-    }
-
-    if (typeof value.content !== 'string' || value.content.length === 0) {
-      throw new Error(`${label}.content is required`)
-    }
-
-    this.assertStart(value.start, label)
-    const duration = this.parseRequiredDuration(value.duration, label)
-
-    if (value.fontSize !== undefined) {
-      if (typeof value.fontSize !== 'number' || !(value.fontSize > 0)) {
-        throw new Error(`${label}.fontSize must be > 0`)
-      }
-    }
-
-    if (value.color !== undefined && typeof value.color !== 'string') {
-      throw new Error(`${label}.color must be a string`)
-    }
-
-    if (value.font !== undefined) {
-      if (typeof value.font !== 'string' || value.font.length === 0) {
-        throw new Error(`${label}.font must be a non-empty string`)
-      }
-    }
-
-    if (value.bold !== undefined && typeof value.bold !== 'boolean') {
-      throw new Error(`${label}.bold must be a boolean`)
-    }
-
-    if (value.italic !== undefined && typeof value.italic !== 'boolean') {
-      throw new Error(`${label}.italic must be a boolean`)
+      throw this.invalid(label, 'expected an object')
     }
 
     const clip: TextClip = {
-      content: value.content,
-      start: typeof value.start === 'number' ? value.start : 0,
-      duration,
+      content: this.parseRequiredString(value.content, `${label}.content`),
+      start: this.parseOptionalStart(value.start, `${label}.start`),
+      duration: this.parseRequiredPositiveNumber(
+        value.duration,
+        `${label}.duration`,
+      ),
       x: this.parsePosition(value.x, `${label}.x`, 'center'),
       y: this.parsePosition(value.y, `${label}.y`, 'center'),
       fontSize:
-        typeof value.fontSize === 'number'
-          ? value.fontSize
-          : DEFAULT_TEXT_FONT_SIZE,
-      color: typeof value.color === 'string' ? value.color : DEFAULT_TEXT_COLOR,
+        value.fontSize === undefined
+          ? COMPOSITION_DEFAULTS.textFontSize
+          : this.parseRequiredPositiveNumber(
+              value.fontSize,
+              `${label}.fontSize`,
+            ),
+      color:
+        value.color === undefined
+          ? COMPOSITION_DEFAULTS.textColor
+          : this.parseRequiredString(value.color, `${label}.color`),
     }
 
-    if (typeof value.font === 'string') {
-      clip.font = value.font
+    if (value.font !== undefined) {
+      clip.font = this.parseRequiredString(value.font, `${label}.font`)
     }
 
-    if (typeof value.bold === 'boolean') {
-      clip.bold = value.bold
+    if (value.bold !== undefined) {
+      clip.bold = this.parseBoolean(value.bold, `${label}.bold`)
     }
 
-    if (typeof value.italic === 'boolean') {
-      clip.italic = value.italic
+    if (value.italic !== undefined) {
+      clip.italic = this.parseBoolean(value.italic, `${label}.italic`)
     }
 
     return clip
@@ -219,40 +195,20 @@ export class CompositionParser {
 
   private parseOverlayClip(value: unknown, label: string): OverlayClip {
     if (!this.isRecord(value)) {
-      throw new Error(`${label} must be an object`)
-    }
-
-    if (typeof value.source !== 'string' || value.source.length === 0) {
-      throw new Error(`${label}.source is required`)
-    }
-
-    this.assertStart(value.start, label)
-    const duration = this.parseRequiredDuration(value.duration, label)
-
-    if (typeof value.x !== 'number') {
-      throw new Error(`${label}.x must be a number`)
-    }
-
-    if (typeof value.y !== 'number') {
-      throw new Error(`${label}.y must be a number`)
-    }
-
-    if (typeof value.width !== 'number' || !(value.width > 0)) {
-      throw new Error(`${label}.width must be > 0`)
-    }
-
-    if (typeof value.height !== 'number' || !(value.height > 0)) {
-      throw new Error(`${label}.height must be > 0`)
+      throw this.invalid(label, 'expected an object')
     }
 
     return {
-      source: value.source,
-      start: typeof value.start === 'number' ? value.start : 0,
-      duration,
-      x: value.x,
-      y: value.y,
-      width: value.width,
-      height: value.height,
+      source: this.parseRequiredString(value.source, `${label}.source`),
+      start: this.parseOptionalStart(value.start, `${label}.start`),
+      duration: this.parseRequiredPositiveNumber(
+        value.duration,
+        `${label}.duration`,
+      ),
+      x: this.parseFiniteNumber(value.x, `${label}.x`),
+      y: this.parseFiniteNumber(value.y, `${label}.y`),
+      width: this.parseRequiredPositiveNumber(value.width, `${label}.width`),
+      height: this.parseRequiredPositiveNumber(value.height, `${label}.height`),
     }
   }
 
@@ -269,33 +225,138 @@ export class CompositionParser {
       return 'center'
     }
 
-    if (typeof value === 'number') {
+    if (this.isFiniteNumber(value)) {
       return value
     }
 
-    throw new Error(`${label} must be a number or "center"`)
+    throw this.invalid(label, 'expected a number or "center"')
   }
 
-  private assertStart(value: unknown, label: string): void {
-    if (value !== undefined && typeof value !== 'number') {
-      throw new Error(`${label}.start must be a number`)
+  private parseOutput(value: unknown): string {
+    if (value === undefined) {
+      return COMPOSITION_DEFAULTS.output
     }
 
-    if (typeof value === 'number' && value < 0) {
-      throw new Error(`${label}.start must be >= 0`)
-    }
+    return this.parseRequiredString(value, 'output')
   }
 
-  private parseRequiredDuration(value: unknown, label: string): number {
-    if (typeof value !== 'number') {
-      throw new Error(`${label}.duration must be a number`)
+  private parseDimension(
+    value: unknown,
+    label: string,
+    fallback: number,
+  ): number {
+    const parsed =
+      value === undefined
+        ? fallback
+        : this.parseRequiredPositiveNumber(value, label)
+
+    if (!Number.isInteger(parsed) || parsed % 2 !== 0) {
+      throw this.invalid(label, 'expected an even integer greater than 0')
     }
 
-    if (!(value > 0)) {
-      throw new Error(`${label}.duration must be > 0`)
+    return parsed
+  }
+
+  private parseOptionalStart(value: unknown, label: string): number {
+    if (value === undefined) {
+      return 0
+    }
+
+    return this.parseNonNegativeNumber(value, label)
+  }
+
+  private parseRequiredString(value: unknown, label: string): string {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw this.invalid(label, 'expected a non-empty string')
     }
 
     return value
+  }
+
+  private parseBoolean(value: unknown, label: string): boolean {
+    if (typeof value !== 'boolean') {
+      throw this.invalid(label, 'expected a boolean')
+    }
+
+    return value
+  }
+
+  private parsePositiveNumber(
+    value: unknown,
+    label: string,
+    fallback: number,
+  ): number {
+    if (value === undefined) {
+      return fallback
+    }
+
+    return this.parseRequiredPositiveNumber(value, label)
+  }
+
+  private parseRequiredPositiveNumber(value: unknown, label: string): number {
+    if (!this.isFiniteNumber(value) || !(value > 0)) {
+      throw this.invalid(label, 'expected a value greater than 0')
+    }
+
+    return value
+  }
+
+  private parseNonNegativeNumber(value: unknown, label: string): number {
+    if (!this.isFiniteNumber(value) || value < 0) {
+      throw this.invalid(label, 'expected a value greater than or equal to 0')
+    }
+
+    return value
+  }
+
+  private parseFiniteNumber(value: unknown, label: string): number {
+    if (!this.isFiniteNumber(value)) {
+      throw this.invalid(label, 'expected a finite number')
+    }
+
+    return value
+  }
+
+  private assertItemsFitTimeline(composition: Composition): void {
+    const duration = composition.scenes.reduce(
+      (sum, scene) => sum + scene.duration,
+      0,
+    )
+
+    for (const [index, clip] of (composition.audio ?? []).entries()) {
+      if (clip.start !== undefined && clip.start >= duration) {
+        throw this.invalid(
+          `audio[${index}].start`,
+          `expected a value within the composition duration (${duration}s)`,
+        )
+      }
+    }
+
+    for (const [index, clip] of (composition.texts ?? []).entries()) {
+      if (clip.start >= duration) {
+        throw this.invalid(
+          `texts[${index}].start`,
+          `expected a value within the composition duration (${duration}s)`,
+        )
+      }
+    }
+
+    for (const [index, clip] of (composition.overlays ?? []).entries()) {
+      if (clip.start >= duration) {
+        throw this.invalid(
+          `overlays[${index}].start`,
+          `expected a value within the composition duration (${duration}s)`,
+        )
+      }
+    }
+  }
+
+  private invalid(label: string, expected: string): Error {
+    return new Error(`Invalid ${label}: ${expected}`)
+  }
+
+  private isFiniteNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value)
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

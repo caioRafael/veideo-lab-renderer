@@ -5,7 +5,6 @@ import {
   SpawnFfmpegExecutor,
   type FfmpegExecutor,
 } from '../ffmpeg/FfmpegExecutor'
-import { formatFfmpegCommand } from '../ffmpeg/formatFfmpegCommand'
 import type { Composition } from '../interfaces/composition'
 import { getTextItems, type RenderPlan } from '../interfaces/render-plan'
 import { FontResolver } from '../media/FontResolver'
@@ -41,20 +40,23 @@ export class Renderer {
     this.executor = options.executor ?? new SpawnFfmpegExecutor()
   }
 
-  async render(composition: Composition): Promise<RenderResult> {
+  prepare(composition: Composition): RenderResult {
     const plan = this.preparePlan(composition)
-    const args = this.commandBuilder.build(plan)
-
-    console.log('FFmpeg command:')
-    console.log(formatFfmpegCommand(args))
-    console.log('')
-
-    await this.executor.execute(args)
 
     return {
       outputPath: plan.outputPath,
-      args,
+      args: this.commandBuilder.build(plan),
     }
+  }
+
+  async execute(args: string[]): Promise<void> {
+    await this.executor.execute(args)
+  }
+
+  async render(composition: Composition): Promise<RenderResult> {
+    const result = this.prepare(composition)
+    await this.execute(result.args)
+    return result
   }
 
   private preparePlan(composition: Composition): RenderPlan {
