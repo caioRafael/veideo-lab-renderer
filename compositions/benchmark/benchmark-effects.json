@@ -1,0 +1,23 @@
+{
+  "output": "benchmark-effects.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 5,
+      "mediaStart": 20,
+      "effects": {
+        "opacity": 0.9,
+        "brightness": 0.08,
+        "contrast": 1.15,
+        "saturation": 0.9,
+        "grayscale": 0.05,
+        "sepia": 0.1,
+        "blur": 1
+      }
+    }
+  ]
+}

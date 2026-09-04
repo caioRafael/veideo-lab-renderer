@@ -1,24 +1,8 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { formatFfmpegCommand } from '../ffmpeg/formatFfmpegCommand'
-import type { MediaPaths } from '../interfaces/media-paths'
-import { FontResolver } from '../media/FontResolver'
-import { MediaResolver } from '../media/MediaResolver'
-import { Renderer } from '../renderer/Renderer'
 import { loadComposition } from './loadComposition'
-
-const rootDir = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-)
-
-const mediaPaths: MediaPaths = {
-  images: path.join(rootDir, 'input', 'images'),
-  audios: path.join(rootDir, 'input', 'audios'),
-  videos: path.join(rootDir, 'input', 'videos'),
-  outputVideos: path.join(rootDir, 'output', 'videos'),
-}
+import { parseArgs } from './parseArgs'
+import { rootDir } from './projectPaths'
+import { runRender } from './runRender'
 
 const defaultCompositionPath = path.join(
   rootDir,
@@ -27,27 +11,18 @@ const defaultCompositionPath = path.join(
 )
 
 async function main(): Promise<void> {
-  const compositionArg = process.argv.slice(2).find((arg) => arg !== '--')
-  const compositionPath = path.resolve(compositionArg ?? defaultCompositionPath)
+  const cli = parseArgs(process.argv.slice(2))
+  const compositionPath = path.resolve(
+    cli.compositionPath ?? defaultCompositionPath,
+  )
   const composition = loadComposition(compositionPath)
-  const mediaResolver = new MediaResolver(mediaPaths)
-  const fontResolver = new FontResolver(path.join(rootDir, 'input', 'fonts'))
-  const renderer = new Renderer({ mediaResolver, fontResolver })
 
-  try {
-    const prepared = renderer.prepare(composition)
-
-    console.log('Composition:', compositionPath)
-    console.log('FFmpeg command:')
-    console.log(formatFfmpegCommand(prepared.args))
-    console.log('')
-
-    await renderer.execute(prepared.args)
-
-    console.log(`Rendered: ${prepared.outputPath}`)
-  } finally {
-    renderer.cleanupTemporaryFiles()
-  }
+  await runRender({
+    composition,
+    label: compositionPath,
+    planningLabel: path.basename(compositionPath),
+    level: cli.level,
+  })
 }
 
 try {

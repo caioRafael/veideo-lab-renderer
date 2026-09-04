@@ -1,7 +1,19 @@
 import { spawn } from 'node:child_process'
+import type { FfmpegProgressUpdate } from '../interfaces/render-runtime'
+import { RenderCancelledError } from '../renderer/RenderCancelledError'
+import { FfmpegProcessError } from './FfmpegProcessError'
+import { parseFfmpegProgressLine } from './parseFfmpegProgress'
+
+const STDERR_LIMIT = 16 * 1024
+const KILL_TIMEOUT_MS = 2000
+
+export interface FfmpegExecuteOptions {
+  signal?: AbortSignal
+  onProgress?: (update: FfmpegProgressUpdate) => void
+}
 
 export interface FfmpegExecutor {
-  execute(args: string[]): Promise<void>
+  execute(args: string[], options?: FfmpegExecuteOptions): Promise<void>
 }
 
 export class SpawnFfmpegExecutor implements FfmpegExecutor {
@@ -11,21 +23,46 @@ export class SpawnFfmpegExecutor implements FfmpegExecutor {
     this.binary = binary
   }
 
-  execute(args: string[]): Promise<void> {
+  execute(args: string[], options: FfmpegExecuteOptions = {}): Promise<void> {
+    if (options.signal?.aborted === true) {
+      return Promise.reject(new RenderCancelledError())
+    }
+
     return new Promise((resolve, reject) => {
       const child = spawn(this.binary, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['ignore', 'ignore', 'pipe'],
       })
 
       let settled = false
+      let stderr = ''
+      let lineBuffer = ''
+      let killTimer: ReturnType<typeof setTimeout> | undefined
 
       const forwardSignal = (signal: NodeJS.Signals): void => {
-        child.kill(signal)
+        if (!child.killed) {
+          child.kill(signal)
+        }
+      }
+
+      const abort = (): void => {
+        if (!child.killed) {
+          child.kill('SIGTERM')
+        }
+
+        killTimer ??= setTimeout(() => {
+          if (!child.killed) {
+            child.kill('SIGKILL')
+          }
+        }, KILL_TIMEOUT_MS)
       }
 
       const cleanup = (): void => {
         process.off('SIGINT', forwardSignal)
         process.off('SIGTERM', forwardSignal)
+        options.signal?.removeEventListener('abort', abort)
+        if (killTimer !== undefined) {
+          clearTimeout(killTimer)
+        }
       }
 
       const settle = (error?: Error): void => {
@@ -46,13 +83,25 @@ export class SpawnFfmpegExecutor implements FfmpegExecutor {
 
       process.on('SIGINT', forwardSignal)
       process.on('SIGTERM', forwardSignal)
+      options.signal?.addEventListener('abort', abort, { once: true })
 
-      child.stdout.on('data', (data: Buffer) => {
-        console.log(data.toString())
-      })
+      if (options.signal?.aborted === true) {
+        abort()
+      }
 
-      child.stderr.on('data', (data: Buffer) => {
-        console.error(data.toString())
+      child.stderr?.on('data', (data: Buffer) => {
+        const chunk = data.toString()
+        stderr = appendLimited(stderr, chunk, STDERR_LIMIT)
+        lineBuffer += chunk
+        const lines = lineBuffer.split(/\r?\n/)
+        lineBuffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          const update = parseFfmpegProgressLine(line)
+          if (update !== undefined) {
+            options.onProgress?.(update)
+          }
+        }
       })
 
       child.on('error', (error: Error) => {
@@ -76,22 +125,34 @@ export class SpawnFfmpegExecutor implements FfmpegExecutor {
       })
 
       child.on('close', (code, signal) => {
+        if (options.signal?.aborted === true) {
+          settle(new RenderCancelledError())
+          return
+        }
+
         if (code === 0) {
           settle()
           return
         }
 
-        if (signal) {
-          settle(new Error(`FFmpeg process was terminated by signal ${signal}`))
-          return
-        }
-
-        if (code === null) {
-          return
-        }
-
-        settle(new Error(`FFmpeg process exited with code ${code}`))
+        settle(
+          new FfmpegProcessError({
+            binary: this.binary,
+            exitCode: code,
+            signal,
+            stderr,
+          }),
+        )
       })
     })
   }
+}
+
+function appendLimited(current: string, chunk: string, limit: number): string {
+  const next = current + chunk
+  if (next.length <= limit) {
+    return next
+  }
+
+  return next.slice(next.length - limit)
 }

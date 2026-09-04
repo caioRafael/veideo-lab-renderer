@@ -1,0 +1,58 @@
+{
+  "output": "benchmark-10-scenes.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 1.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 1.5
+    }
+  ]
+}

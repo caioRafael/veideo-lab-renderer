@@ -32,6 +32,9 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
+# Benchmark machine output
+docs/benchmark-results.json
+
 # media files   
 *.mp3
 *.mp4

@@ -1043,4 +1043,23 @@ describe('FfmpegCommandBuilder', () => {
       assert.equal(args[args.lastIndexOf('-t') + 1], '9')
     }
   })
+
+  it('builds the same command twice for the same render plan', () => {
+    const plan = planWith({
+      tracks: [
+        videoTrack([
+          {
+            id: 'video-0',
+            source: '/tmp/a.png',
+            start: 0,
+            duration: 5,
+            mediaType: 'image',
+            effects: { blur: 2, brightness: 0.1, contrast: 1.2 },
+          },
+        ]),
+      ],
+    })
+
+    assert.deepEqual(builder.build(plan), builder.build(plan))
+  })
 })

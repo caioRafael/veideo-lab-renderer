@@ -1,0 +1,258 @@
+{
+  "output": "benchmark-50-scenes.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 0.5
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 0.5
+    }
+  ]
+}

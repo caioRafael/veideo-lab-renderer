@@ -1,0 +1,19 @@
+{
+  "output": "benchmark-many-texts.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 8 }
+  ],
+  "texts": [
+    { "content": "Title One", "start": 0, "duration": 2, "x": "center", "y": 120, "fontSize": 64, "color": "#FFFFFF" },
+    { "content": "Title Two", "start": 1, "duration": 2, "x": "center", "y": 220, "fontSize": 48, "color": "#FFDD00" },
+    { "content": "Lower third", "start": 2, "duration": 2, "x": 80, "y": 900, "fontSize": 36, "color": "#FFFFFF" },
+    { "content": "Caption A", "start": 3, "duration": 2, "x": "center", "y": 960, "fontSize": 32, "color": "#FFFFFF" },
+    { "content": "Caption B", "start": 4, "duration": 2, "x": "center", "y": 160, "fontSize": 40, "color": "#00E5FF" },
+    { "content": "Note", "start": 5, "duration": 2, "x": 80, "y": 80, "fontSize": 28, "color": "#FFFFFF" },
+    { "content": "Watermark", "start": 0, "duration": 8, "x": 1600, "y": 40, "fontSize": 22, "color": "#FFFFFF" },
+    { "content": "Closing", "start": 6, "duration": 2, "x": "center", "y": "center", "fontSize": 56, "color": "#FFFFFF" }
+  ]
+}

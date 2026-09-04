@@ -1,0 +1,21 @@
+{
+  "output": "benchmark-transitions.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    { "type": "image", "source": "flamengo.png", "duration": 4 },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 4,
+      "transition": { "type": "crossfade", "duration": 1 }
+    },
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 4,
+      "transition": { "type": "fade", "duration": 0.8 }
+    }
+  ]
+}
