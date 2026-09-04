@@ -1,0 +1,21 @@
+{
+  "output": "transform-crop.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 4,
+      "transform": {
+        "crop": {
+          "width": 1100,
+          "height": 950,
+          "x": 0,
+          "y": 0
+        }
+      }
+    }
+  ]
+}

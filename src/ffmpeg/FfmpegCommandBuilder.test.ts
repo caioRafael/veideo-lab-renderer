@@ -407,4 +407,182 @@ describe('FfmpegCommandBuilder', () => {
     assert.equal(filterComplex.includes('xfade='), false)
     assert.equal(args[args.lastIndexOf('-t') + 1], '10')
   })
+
+  it('prepares transformed scenes before xfade with matching canvas output', () => {
+    const args = builder.build(
+      planWith({
+        duration: 9,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+              transform: { scale: 1.2 },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 4,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+              transform: { x: 100 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+
+    const scaleIndex = filterComplex.indexOf('[v0fit]scale=iw*1.2:ih*1.2[v0z]')
+    const overlayIndex = filterComplex.indexOf(
+      '[v0bg][v0z]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2:shortest=1',
+    )
+    const positionIndex = filterComplex.indexOf(
+      '[v1bg][v1fit]overlay=(main_w-overlay_w)/2+100:(main_h-overlay_h)/2:shortest=1',
+    )
+    const xfadeIndex = filterComplex.indexOf(
+      'xfade=transition=fade:duration=1:offset=4[vout]',
+    )
+
+    assert.equal(scaleIndex !== -1, true)
+    assert.equal(overlayIndex !== -1, true)
+    assert.equal(positionIndex !== -1, true)
+    assert.equal(xfadeIndex !== -1, true)
+    assert.equal(scaleIndex < overlayIndex, true)
+    assert.equal(overlayIndex < xfadeIndex, true)
+    assert.equal(positionIndex < xfadeIndex, true)
+    assert.match(filterComplex, /settb=AVTB/)
+    assert.match(filterComplex, /format=yuv420p\[v0\]/)
+    assert.match(filterComplex, /format=yuv420p\[v1\]/)
+    assert.match(filterComplex, /fps=25,format=yuv420p\[v0\]/)
+    assert.match(filterComplex, /fps=25,format=yuv420p\[v1\]/)
+    assert.equal(filterComplex.includes('concat='), false)
+  })
+
+  it('applies animated transforms before xfade without changing the overlap offset', () => {
+    const args = builder.build(
+      planWith({
+        duration: 7,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 4,
+              mediaType: 'image',
+              transform: { scale: { from: 1, to: 1.2 } },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 3,
+              duration: 4,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+              transform: {
+                pan: {
+                  from: { x: 0, y: 0 },
+                  to: { x: 150, y: 0 },
+                },
+              },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /scale=w='trunc\(iw\*/)
+    assert.match(filterComplex, /eval=frame/)
+    assert.match(filterComplex, /if\(isnan\(t\),0,t\)\/4/)
+    assert.match(
+      filterComplex,
+      /xfade=transition=fade:duration=1:offset=3\[vout\]/,
+    )
+    assert.match(filterComplex, /format=yuv420p\[v0\]/)
+    assert.match(filterComplex, /format=yuv420p\[v1\]/)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '7')
+  })
+
+  it('does not apply scene transforms to audio, overlay or text filters', () => {
+    const args = builder.build(
+      planWith({
+        duration: 10,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 10,
+              mediaType: 'image',
+              transform: { scale: 1.4, x: 80, y: 40 },
+            },
+          ]),
+          audioTrack([
+            {
+              id: 'audio-0',
+              source: '/tmp/voice.mp3',
+              start: 2,
+              duration: 3,
+              volume: 1,
+            },
+          ]),
+          {
+            id: 'overlay',
+            type: 'overlay',
+            items: [
+              {
+                id: 'overlay-0',
+                source: '/tmp/logo.png',
+                start: 1,
+                duration: 5,
+                x: 80,
+                y: 80,
+                width: 280,
+                height: 280,
+              },
+            ],
+          } satisfies OverlayTrack,
+          {
+            id: 'text',
+            type: 'text',
+            items: [
+              {
+                id: 'text-0',
+                content: 'Hello World',
+                start: 2,
+                duration: 5,
+                x: 'center',
+                y: 140,
+                fontSize: 72,
+                color: '#FFFFFF',
+                fontPath: '/tmp/Arial.ttf',
+              },
+            ],
+          } satisfies TextTrack,
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+    assert.match(filterComplex, /\[v0fit\]scale=iw\*1\.4:ih\*1\.4\[v0z\]/)
+    assert.match(filterComplex, /atrim=0:3/)
+    assert.match(filterComplex, /adelay=2000\|2000/)
+    assert.match(filterComplex, /volume=1/)
+    assert.match(filterComplex, /scale=280:280\[ov0\]/)
+    assert.match(filterComplex, /overlay=80:80:enable='between\(t,1,6\)'/)
+    assert.match(filterComplex, /drawtext=fontfile='\/tmp\/Arial.ttf'/)
+    assert.match(filterComplex, /text='Hello World'/)
+    assert.equal(filterComplex.includes('volume=1.4'), false)
+  })
 })

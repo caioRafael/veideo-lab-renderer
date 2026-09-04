@@ -428,4 +428,69 @@ describe('buildRenderPlan', () => {
       duration: 1,
     })
   })
+
+  it('preserves transform intent on the video item', () => {
+    const transform = {
+      scale: 1.2,
+      zoom: 1.1,
+      x: 40,
+      y: -10,
+      pan: { x: 10, y: 20 },
+      crop: { width: 1600, height: 900, x: 8, y: 4 },
+    }
+
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          {
+            type: 'image',
+            source: 'a.png',
+            duration: 5,
+            transform,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getVideoTrack(plan)?.items[0]?.transform, transform)
+  })
+
+  it('preserves animated transform intent on the video item', () => {
+    const transform = {
+      scale: { from: 1, to: 1.18 },
+      pan: {
+        from: { x: -80, y: 20 },
+        to: { x: 100, y: -30 },
+      },
+    }
+
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          {
+            type: 'image',
+            source: 'a.png',
+            duration: 8,
+            transform,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getVideoTrack(plan)?.items[0]?.transform, transform)
+    assert.equal(plan.duration, 8)
+  })
+
+  it('omits transform from the video item when the scene has none', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 5 }],
+      }),
+      resolver,
+    )
+
+    assert.equal(getVideoTrack(plan)?.items[0]?.transform, undefined)
+  })
 })

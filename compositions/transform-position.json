@@ -1,0 +1,17 @@
+{
+  "output": "transform-position.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 4,
+      "transform": {
+        "x": 220,
+        "y": -80
+      }
+    }
+  ]
+}

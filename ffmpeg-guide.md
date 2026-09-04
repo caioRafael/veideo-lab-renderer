@@ -2011,7 +2011,11 @@ Ordem:
 
 ```text
 input (-loop 1 -t N para imagem; -t N para vídeo)
-  → scale + pad + setsar + fps + format=yuv420p
+  → crop? (pixels da mídia)
+  → canvas fit (scale W:H force_original_aspect_ratio=decrease)
+  → transform scale/zoom + position/pan (se houver)
+  → pad no canvas  OU  overlay em color=black W×H
+  → setsar + fps + format=yuv420p
   → transition (concat | fade+concat | xfade)
   → overlay
   → drawtext (ou PNG rasterizado)
@@ -2019,7 +2023,7 @@ input (-loop 1 -t N para imagem; -t N para vídeo)
   → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURAÇÃO -pix_fmt yuv420p
 ```
 
-Normalização de cada cena (imagem ou vídeo):
+Normalização de cada cena sem placement (`scale`/`zoom`/`x`/`y`/`pan`):
 
 ```text
 scale=W:H:force_original_aspect_ratio=decrease,
@@ -2028,6 +2032,10 @@ setsar=1,
 fps=F,
 format=yuv420p
 ```
+
+Com placement, o `pad` é substituído por overlay no canvas preto. O frame que chega na transição continua W×H, SAR 1, fps F, yuv420p. `scale` da transformação (`iw*S:ih*S` ou expressão de `t`) não é o mesmo `scale` da normalização do canvas.
+
+Animação linear (`{ from, to }`) usa `t` do FFmpeg, com `min(max(if(isnan(t),0,t)/duration,0),1)`. Scale animado precisa de `eval=frame`. Dimensões animadas são forçadas a pares com `trunc(iw*…/2)*2`. O Node não gera frames intermediários.
 
 Sem `transition` nas cenas, as pads `[v0][v1]…` vão para `concat`.
 

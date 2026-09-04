@@ -33,7 +33,7 @@ export class FfmpegCommandBuilder {
     for (const [index, item] of videoItems.entries()) {
       this.pushVideoInput(args, item)
       const outputLabel = `v${index}`
-      filterParts.push(videoFilter.scale(`${index}:v`, outputLabel))
+      filterParts.push(videoFilter.prepare(`${index}:v`, outputLabel, item))
       videoLabels.push(`[${outputLabel}]`)
     }
 

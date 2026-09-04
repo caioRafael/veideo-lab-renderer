@@ -2,7 +2,7 @@
 
 Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
 
-Você descreve cenas (imagem/vídeo), transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
+Você descreve cenas (imagem/vídeo), transformações estáticas ou animadas, transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
 
 ## Requisitos
 
@@ -48,6 +48,16 @@ pnpm dev -- compositions/video-photos.json
 pnpm dev -- compositions/fade.json
 pnpm dev -- compositions/crossfade.json
 pnpm dev -- compositions/crossfade-image-video.json
+pnpm dev -- compositions/transform-scale.json
+pnpm dev -- compositions/transform-position.json
+pnpm dev -- compositions/transform-crop.json
+pnpm dev -- compositions/transform-combined.json
+pnpm dev -- compositions/transform-video.json
+pnpm dev -- compositions/transform-with-crossfade.json
+pnpm dev -- compositions/animated-scale.json
+pnpm dev -- compositions/ken-burns.json
+pnpm dev -- compositions/animated-video.json
+pnpm dev -- compositions/animated-with-crossfade.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
@@ -123,6 +133,71 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | `audio` | (opcional) áudios extras da cena |
 | `keepAudio` | (vídeo) mantém o áudio original do arquivo |
 | `transition` | transição **a partir da cena anterior** (`fade` ou `crossfade`) |
+| `transform` | transformação visual da mídia da cena (estática ou animada) |
+
+### Transformações
+
+`transform` descreve a intenção visual da mídia da cena. Não afeta áudio, texto nem overlay. `crop` é sempre estático. `scale`, `zoom`, `x`/`y` e `pan` aceitam um número (estático) ou `{ from, to }` (animação linear ao longo da duração da cena).
+
+Estático:
+
+```json
+{
+  "transform": {
+    "scale": 1.2,
+    "x": 100,
+    "y": 50
+  }
+}
+```
+
+Animado (Ken Burns):
+
+```json
+{
+  "transform": {
+    "scale": { "from": 1, "to": 1.18 },
+    "pan": {
+      "from": { "x": -80, "y": 20 },
+      "to": { "x": 100, "y": -30 }
+    }
+  }
+}
+```
+
+A animação começa em `from`, termina em `to`, interpola linearmente e ocupa a duração da cena. Não há easing nem keyframes. `t` é limitado a `[0, duration]`.
+
+| Campo | Semântica |
+|---|---|
+| `scale` | multiplicador de tamanho. `1` = tamanho após o fit no canvas. Número ou `{ from, to }` (`from`/`to` > 0) |
+| `zoom` | o mesmo multiplicador que `scale`. Se os dois existirem: `scale(t) * zoom(t)` em cada instante |
+| `x` / `y` | deslocamento em pixels **a partir do centro do canvas**. Número ou `{ from, to }`. `x > 0` direita, `y > 0` baixo |
+| `pan` | o mesmo deslocamento que `x`/`y`. Estático: `{ x, y }`. Animado: `{ from: { x, y }, to: { x, y } }`. Se coexistir com `x`/`y`, os valores **somam** |
+| `crop` | recorte **estático** em pixels da mídia de origem |
+
+`zoom` ≡ `scale` e `pan` ≡ `x`/`y`, como na Fase 3. A interpolação de `scale * zoom` é o produto das duas retas, não o lerp do produto. `position + pan` somam porque lerp é linear.
+
+Ordem aplicada:
+
+```text
+input
+ ↓
+crop          (estático; pixels da mídia)
+ ↓
+canvas fit
+ ↓
+scale / zoom  (estático ou animado)
+ ↓
+position / pan  (estático ou animado; overlay no canvas)
+ ↓
+setsar + fps + format=yuv420p
+ ↓
+transition
+```
+
+Exemplos estáticos: `compositions/transform-scale.json`, `transform-position.json`, `transform-crop.json`, `transform-combined.json`, `transform-video.json`, `transform-with-crossfade.json`.
+
+Exemplos animados: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`.
 
 ### Áudio
 
@@ -227,6 +302,19 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - `compositions/fade.json` — foto → preto → foto
 - `compositions/crossfade.json` — dissolução de 1s entre duas fotos
 - `compositions/crossfade-image-video.json` — foto → clipe de vídeo
+- `compositions/transform-scale.json` — foto ampliada (scale 1.4)
+- `compositions/transform-position.json` — foto deslocada no canvas
+- `compositions/transform-crop.json` — recorte da mídia original
+- `compositions/transform-combined.json` — crop + scale + position
+- `compositions/transform-video.json` — clipe com crop, scale, pan e áudio original
+- `compositions/transform-with-crossfade.json` — transform + crossfade
+- `compositions/animated-scale.json` — scale 1 → 1.2
+- `compositions/animated-pan.json` — pan da esquerda para a direita
+- `compositions/animated-position.json` — x/y animados
+- `compositions/animated-zoom.json` — zoom 1 → 1.2
+- `compositions/ken-burns.json` — scale + pan simultâneos, com áudio
+- `compositions/animated-video.json` — clipe com scale/pan animados
+- `compositions/animated-with-crossfade.json` — transform animado + crossfade
 
 ## Arquitetura
 
@@ -249,7 +337,7 @@ FFmpeg
 O `RenderPlan` é uma timeline de tracks independentes:
 
 ```text
-Video Track     cenas em sequência; overlap só com crossfade
+Video Track     cenas em sequência (transform opcional); overlap só com crossfade
 Audio Track     clips com start absoluto
 Overlay Track   imagens sobrepostas
 Text Track      drawtext (ou PNG rasterizado)
@@ -292,4 +380,4 @@ src/
 ## Documentação
 
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
-- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, áudio)
+- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, áudio)

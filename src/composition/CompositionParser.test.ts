@@ -515,4 +515,577 @@ describe('CompositionParser', () => {
       /composition duration \(9s\)/,
     )
   })
+
+  it('parses a scene without a transform', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+    })
+
+    assert.equal(composition.scenes[0]?.transform, undefined)
+  })
+
+  it('parses a valid transform object', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { scale: 1.2, x: 100, y: -40 },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, {
+      scale: 1.2,
+      x: 100,
+      y: -40,
+    })
+  })
+
+  it('parses a valid scale', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, transform: { scale: 0.5 } }],
+    })
+
+    assert.equal(composition.scenes[0]?.transform?.scale, 0.5)
+  })
+
+  it('rejects an invalid scale', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: 0 } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: -1 } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: NaN } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: Infinity } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: '1.2' } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: null } }],
+        }),
+      /transform.scale: expected a value greater than 0/,
+    )
+  })
+
+  it('parses a valid position', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, transform: { x: -120.5, y: 0 } }],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, { x: -120.5, y: 0 })
+  })
+
+  it('rejects a non-finite position', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { x: Infinity } }],
+        }),
+      /transform.x: expected a finite number/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { y: NaN } }],
+        }),
+      /transform.y: expected a finite number/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { x: '100' } }],
+        }),
+      /transform.x: expected a finite number/,
+    )
+  })
+
+  it('parses a valid crop and defaults origin to 0', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { crop: { width: 1280, height: 720 } },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.crop, {
+      width: 1280,
+      height: 720,
+      x: 0,
+      y: 0,
+    })
+  })
+
+  it('parses a crop with an origin', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            crop: { width: 800, height: 600, x: 10, y: 20 },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.crop, {
+      width: 800,
+      height: 600,
+      x: 10,
+      y: 20,
+    })
+  })
+
+  it('rejects an invalid crop', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { crop: { height: 720 } } }],
+        }),
+      /transform.crop.width: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { crop: { width: 0, height: 720 } },
+            },
+          ],
+        }),
+      /transform.crop.width: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { crop: { width: 1280, height: -1 } },
+            },
+          ],
+        }),
+      /transform.crop.height: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { crop: { width: 1280, height: 720, x: -1 } },
+            },
+          ],
+        }),
+      /transform.crop.x: expected a value greater than or equal to 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { crop: { width: 1280, height: 720, y: -0.1 } },
+            },
+          ],
+        }),
+      /transform.crop.y: expected a value greater than or equal to 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: {
+                crop: { width: Infinity, height: 720 },
+              },
+            },
+          ],
+        }),
+      /transform.crop.width: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { crop: null } }],
+        }),
+      /transform.crop: expected an object/,
+    )
+  })
+
+  it('parses a valid zoom', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, transform: { zoom: 1.25 } }],
+    })
+
+    assert.equal(composition.scenes[0]?.transform?.zoom, 1.25)
+  })
+
+  it('rejects an invalid zoom', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { zoom: 0 } }],
+        }),
+      /transform.zoom: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { zoom: -2 } }],
+        }),
+      /transform.zoom: expected a value greater than 0/,
+    )
+  })
+
+  it('parses a valid pan', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: { pan: { x: 100, y: -50 } },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.pan, {
+      x: 100,
+      y: -50,
+    })
+  })
+
+  it('rejects a non-finite pan', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { pan: { x: Infinity } } }],
+        }),
+      /transform.pan.x: expected a finite number/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { pan: null } }],
+        }),
+      /transform.pan: expected an object/,
+    )
+  })
+
+  it('parses a combination of transformations', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            scale: 1.2,
+            zoom: 1.1,
+            x: 40,
+            y: -10,
+            pan: { x: 10, y: 20 },
+            crop: { width: 1600, height: 900, x: 8, y: 4 },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, {
+      scale: 1.2,
+      zoom: 1.1,
+      x: 40,
+      y: -10,
+      pan: { x: 10, y: 20 },
+      crop: { width: 1600, height: 900, x: 8, y: 4 },
+    })
+  })
+
+  it('rejects a transform that is not an object', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: 'scale=1.2' }],
+        }),
+      /transform: expected an object/,
+    )
+  })
+
+  it('parses animated scale', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, transform: { scale: { from: 1, to: 1.2 } } }],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.scale, {
+      from: 1,
+      to: 1.2,
+    })
+  })
+
+  it('parses animated zoom', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, transform: { zoom: { from: 1, to: 1.25 } } }],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.zoom, {
+      from: 1,
+      to: 1.25,
+    })
+  })
+
+  it('parses animated position on x and y', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            x: { from: 0, to: 150 },
+            y: { from: -20, to: 50 },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, {
+      x: { from: 0, to: 150 },
+      y: { from: -20, to: 50 },
+    })
+  })
+
+  it('parses animated pan as from/to points', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            pan: {
+              from: { x: 0, y: 0 },
+              to: { x: 150, y: 50 },
+            },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.pan, {
+      from: { x: 0, y: 0 },
+      to: { x: 150, y: 50 },
+    })
+  })
+
+  it('defaults omitted axes on animated pan points to 0', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            pan: { from: { x: -80 }, to: { y: 30 } },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.pan, {
+      from: { x: -80, y: 0 },
+      to: { x: 0, y: 30 },
+    })
+  })
+
+  it('parses animated scale with static crop', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            crop: { width: 1100, height: 950 },
+            scale: { from: 1, to: 1.2 },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, {
+      crop: { width: 1100, height: 950, x: 0, y: 0 },
+      scale: { from: 1, to: 1.2 },
+    })
+  })
+
+  it('parses animated scale with a static offset', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            scale: { from: 1, to: 1.2 },
+            x: 40,
+            y: -10,
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform, {
+      scale: { from: 1, to: 1.2 },
+      x: 40,
+      y: -10,
+    })
+  })
+
+  it('parses animated scale with animated pan', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            scale: { from: 1, to: 1.18 },
+            pan: {
+              from: { x: -80, y: 20 },
+              to: { x: 100, y: -30 },
+            },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.scale, {
+      from: 1,
+      to: 1.18,
+    })
+    assert.deepEqual(composition.scenes[0]?.transform?.pan, {
+      from: { x: -80, y: 20 },
+      to: { x: 100, y: -30 },
+    })
+  })
+
+  it('parses animated zoom with animated pan', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          transform: {
+            zoom: { from: 1, to: 1.2 },
+            pan: {
+              from: { x: 0, y: 0 },
+              to: { x: 80, y: 40 },
+            },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.transform?.zoom, {
+      from: 1,
+      to: 1.2,
+    })
+  })
+
+  it('rejects incomplete or invalid animated scale', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, transform: { scale: { from: 1 } } }],
+        }),
+      /transform.scale: expected "from" and "to"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            { ...validScene, transform: { scale: { from: 0, to: 1.2 } } },
+          ],
+        }),
+      /transform.scale.from: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            { ...validScene, transform: { scale: { from: 1, to: -1 } } },
+          ],
+        }),
+      /transform.scale.to: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { scale: { from: 1, to: Infinity } },
+            },
+          ],
+        }),
+      /transform.scale.to: expected a value greater than 0/,
+    )
+  })
+
+  it('rejects invalid animated pan', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: {
+                pan: { from: { x: 0, y: 0 }, to: { x: '100', y: 50 } },
+              },
+            },
+          ],
+        }),
+      /transform.pan.to.x: expected a finite number/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: { pan: { from: { x: 0, y: 0 } } },
+            },
+          ],
+        }),
+      /transform.pan: expected "from" and "to"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              transform: {
+                pan: { x: 10, from: { x: 0, y: 0 }, to: { x: 1, y: 1 } },
+              },
+            },
+          ],
+        }),
+      /transform.pan: expected either \{ x, y \} or \{ from, to \}, not both/,
+    )
+  })
 })

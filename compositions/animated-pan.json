@@ -1,0 +1,19 @@
+{
+  "output": "animated-pan.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 6,
+      "transform": {
+        "pan": {
+          "from": { "x": -180, "y": 0 },
+          "to": { "x": 180, "y": 0 }
+        }
+      }
+    }
+  ]
+}

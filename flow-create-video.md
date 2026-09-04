@@ -109,19 +109,32 @@ Vídeo:
 -t 8 -i input/videos/gloria-eterna.mp4
 ```
 
-### 2. Padronizar e concatenar vídeo
+### 2. Transformar, padronizar e concatenar vídeo
+
+Sem `transform` (ou só com `crop`), cada cena entra no canvas assim:
 
 ```text
-[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,
+[0:v]crop=…,   # só se houver crop
+     scale=1920:1080:force_original_aspect_ratio=decrease,
      pad=1920:1080:(ow-iw)/2:(oh-ih)/2,
      setsar=1,fps=25,format=yuv420p[v0]
 ```
+
+Com `scale` / `zoom` / `x` / `y` / `pan`, o `pad` vira overlay no canvas preto — o frame final continua 1920×1080, `yuv420p`, mesmo FPS e SAR 1, para o `xfade` receber streams compatíveis.
+
+Valores estáticos (`scale: 1.2`) geram constantes no filtro. Valores animados (`scale: { from, to }`) viram expressões de `t` no FFmpeg (`lerp` linear, limitado a `[0, duration]`). O Node não gera um frame por instante.
+
+```text
+input → crop → canvas fit → scale/zoom → position/pan → setsar/fps/format → transition
+```
+
+`x`/`y` (e `pan`) são deslocamento a partir do centro, em pixels do canvas.
 
 ```text
 [v0][v1][v2]concat=n=3:v=1:a=0[vout]
 ```
 
-Se houver overlay ou texto, o concat sai em `[vbase]` e as camadas seguintes terminam em `[vout]`.
+Se houver overlay ou texto, o concat sai em `[vbase]` e as camadas seguintes terminam em `[vout]`. Transformações da cena **não** se aplicam a texto nem overlay.
 
 ### 3. Áudio
 
@@ -163,10 +176,10 @@ MP4
 ```
 
 ```text
-scenes image/video ─► Video Track ─► scale/pad/fps ─► concat ─► [vbase]
-overlays            ─► Overlay Track ─► scale + overlay ───────► [vout]
-texts               ─► Text Track ─► drawtext ou PNG overlay ──┘
-audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ───────► [aout]
+scenes image/video ─► Video Track ─► crop? ─► fit ─► transform ─► concat/xfade ─► [vbase]
+overlays            ─► Overlay Track ─► scale + overlay ─────────────────────────► [vout]
+texts               ─► Text Track ─► drawtext ou PNG overlay ────────────────────┘
+audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ─────────────────────────► [aout]
 ```
 
 ---
@@ -178,8 +191,11 @@ pnpm dev
 pnpm dev -- compositions/example.json
 pnpm dev -- compositions/full-timeline.json
 pnpm dev -- compositions/video-photos.json
+pnpm dev -- compositions/transform-scale.json
+pnpm dev -- compositions/transform-with-crossfade.json
+pnpm dev -- compositions/ken-burns.json
 ```
 
 A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
 
-Transições (`fade` / `crossfade`) são declaradas na cena de destino. Ver [README](README.md#transições).
+Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`). Ver [README](README.md#transformações).

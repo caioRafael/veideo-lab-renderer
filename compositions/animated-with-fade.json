@@ -1,0 +1,32 @@
+{
+  "output": "animated-with-fade.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 4,
+      "transform": {
+        "scale": {
+          "from": 1,
+          "to": 1.15
+        }
+      }
+    },
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 4,
+      "transform": {
+        "x": { "from": -80, "to": 80 },
+        "y": { "from": 0, "to": 0 }
+      },
+      "transition": {
+        "type": "fade",
+        "duration": 1
+      }
+    }
+  ]
+}

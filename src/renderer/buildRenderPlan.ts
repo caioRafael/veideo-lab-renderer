@@ -72,6 +72,10 @@ function createVideoTrack(
       item.incomingTransition = scene.transition
     }
 
+    if (scene.transform !== undefined) {
+      item.transform = scene.transform
+    }
+
     items.push(item)
     cursor = start + scene.duration
   }

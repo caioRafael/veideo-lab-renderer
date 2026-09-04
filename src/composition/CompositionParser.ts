@@ -3,6 +3,16 @@ import type { Composition } from '../interfaces/composition'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
 import type { PositionValue, TextClip } from '../interfaces/text'
+import type {
+  AnimatedPoint,
+  AnimatedValue,
+  CropRegion,
+  PanOffset,
+  PanValue,
+  Point,
+  Transform,
+  TransformValue,
+} from '../interfaces/transform'
 import type { Transition, TransitionType } from '../interfaces/transition'
 import { COMPOSITION_DEFAULTS } from './defaults'
 import { visualDuration } from './visualDuration'
@@ -107,6 +117,13 @@ export class CompositionParser {
       )
     }
 
+    if (value.transform !== undefined) {
+      scene.transform = this.parseTransform(
+        value.transform,
+        `${label}.transform`,
+      )
+    }
+
     if (value.audio !== undefined) {
       if (!Array.isArray(value.audio)) {
         throw this.invalid(`${label}.audio`, 'expected an array')
@@ -127,6 +144,169 @@ export class CompositionParser {
     }
 
     return scene
+  }
+
+  private parseTransform(value: unknown, label: string): Transform {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    const transform: Transform = {}
+
+    if (value.scale !== undefined) {
+      transform.scale = this.parsePositiveTransformValue(
+        value.scale,
+        `${label}.scale`,
+      )
+    }
+
+    if (value.zoom !== undefined) {
+      transform.zoom = this.parsePositiveTransformValue(
+        value.zoom,
+        `${label}.zoom`,
+      )
+    }
+
+    if (value.x !== undefined) {
+      transform.x = this.parseFiniteTransformValue(value.x, `${label}.x`)
+    }
+
+    if (value.y !== undefined) {
+      transform.y = this.parseFiniteTransformValue(value.y, `${label}.y`)
+    }
+
+    if (value.pan !== undefined) {
+      transform.pan = this.parsePan(value.pan, `${label}.pan`)
+    }
+
+    if (value.crop !== undefined) {
+      transform.crop = this.parseCrop(value.crop, `${label}.crop`)
+    }
+
+    return transform
+  }
+
+  private parsePositiveTransformValue(
+    value: unknown,
+    label: string,
+  ): TransformValue {
+    if (this.isRecord(value)) {
+      return this.parseAnimatedValue(value, label, 'positive')
+    }
+
+    return this.parseRequiredPositiveNumber(value, label)
+  }
+
+  private parseFiniteTransformValue(
+    value: unknown,
+    label: string,
+  ): TransformValue {
+    if (this.isRecord(value)) {
+      return this.parseAnimatedValue(value, label, 'finite')
+    }
+
+    return this.parseFiniteNumber(value, label)
+  }
+
+  private parseAnimatedValue(
+    value: Record<string, unknown>,
+    label: string,
+    kind: 'positive' | 'finite',
+  ): AnimatedValue {
+    if (value.from === undefined || value.to === undefined) {
+      throw this.invalid(label, 'expected "from" and "to"')
+    }
+
+    if (kind === 'positive') {
+      return {
+        from: this.parseRequiredPositiveNumber(value.from, `${label}.from`),
+        to: this.parseRequiredPositiveNumber(value.to, `${label}.to`),
+      }
+    }
+
+    return {
+      from: this.parseFiniteNumber(value.from, `${label}.from`),
+      to: this.parseFiniteNumber(value.to, `${label}.to`),
+    }
+  }
+
+  private parsePan(value: unknown, label: string): PanValue {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    if (value.from !== undefined || value.to !== undefined) {
+      if (value.x !== undefined || value.y !== undefined) {
+        throw this.invalid(
+          label,
+          'expected either { x, y } or { from, to }, not both',
+        )
+      }
+
+      return this.parseAnimatedPoint(value, label)
+    }
+
+    const pan: PanOffset = {}
+
+    if (value.x !== undefined) {
+      pan.x = this.parseFiniteTransformValue(value.x, `${label}.x`)
+    }
+
+    if (value.y !== undefined) {
+      pan.y = this.parseFiniteTransformValue(value.y, `${label}.y`)
+    }
+
+    return pan
+  }
+
+  private parseAnimatedPoint(
+    value: Record<string, unknown>,
+    label: string,
+  ): AnimatedPoint {
+    if (value.from === undefined || value.to === undefined) {
+      throw this.invalid(label, 'expected "from" and "to"')
+    }
+
+    return {
+      from: this.parsePoint(value.from, `${label}.from`),
+      to: this.parsePoint(value.to, `${label}.to`),
+    }
+  }
+
+  private parsePoint(value: unknown, label: string): Point {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    return {
+      x:
+        value.x === undefined
+          ? 0
+          : this.parseFiniteNumber(value.x, `${label}.x`),
+      y:
+        value.y === undefined
+          ? 0
+          : this.parseFiniteNumber(value.y, `${label}.y`),
+    }
+  }
+
+  private parseCrop(value: unknown, label: string): CropRegion {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    return {
+      width: this.parseRequiredPositiveNumber(value.width, `${label}.width`),
+      height: this.parseRequiredPositiveNumber(value.height, `${label}.height`),
+      x:
+        value.x === undefined
+          ? 0
+          : this.parseNonNegativeNumber(value.x, `${label}.x`),
+      y:
+        value.y === undefined
+          ? 0
+          : this.parseNonNegativeNumber(value.y, `${label}.y`),
+    }
   }
 
   private parseTransition(value: unknown, label: string): Transition {

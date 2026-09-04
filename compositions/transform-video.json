@@ -1,0 +1,27 @@
+{
+  "output": "transform-video.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 4,
+      "keepAudio": true,
+      "transform": {
+        "crop": {
+          "width": 480,
+          "height": 300,
+          "x": 80,
+          "y": 20
+        },
+        "scale": 1.3,
+        "pan": {
+          "x": -80,
+          "y": 30
+        }
+      }
+    }
+  ]
+}
