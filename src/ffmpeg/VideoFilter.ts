@@ -5,6 +5,7 @@ import {
   loopCopyCount,
 } from '../interfaces/media-timing'
 import type { VideoItem } from '../interfaces/render-plan'
+import { EffectFilter } from './EffectFilter'
 import {
   hasPlacementTransform,
   isAnimatedScalar,
@@ -17,6 +18,7 @@ export class VideoFilter {
   private readonly width: number
   private readonly height: number
   private readonly fps: number
+  private readonly effectFilter = new EffectFilter()
 
   constructor(width: number, height: number, fps: number) {
     this.width = width
@@ -36,9 +38,9 @@ export class VideoFilter {
             outputLabel,
             cropPrefix,
             resolved,
-            item.duration,
+            item,
           )
-        : `[${looped.label}]${cropPrefix}${this.canvasNormalize()}[${outputLabel}]`
+        : `[${looped.label}]${cropPrefix}${this.canvasNormalize()}${this.effectSuffix(item)}[${outputLabel}]`
 
       return `${looped.chains.join(';')};${rest}`
     }
@@ -46,7 +48,7 @@ export class VideoFilter {
     const mediaPrefix = this.mediaTimePrefix(item)
 
     if (!hasPlacementTransform(resolved)) {
-      return `[${inputLabel}]${mediaPrefix}${cropPrefix}${this.canvasNormalize()}[${outputLabel}]`
+      return `[${inputLabel}]${mediaPrefix}${cropPrefix}${this.canvasNormalize()}${this.effectSuffix(item)}[${outputLabel}]`
     }
 
     return this.placeOnCanvas(
@@ -54,7 +56,7 @@ export class VideoFilter {
       outputLabel,
       `${mediaPrefix}${cropPrefix}`,
       resolved,
-      item.duration,
+      item,
     )
   }
 
@@ -192,13 +194,19 @@ export class VideoFilter {
     return `crop=${width}:${height}:${x}:${y},`
   }
 
+  private effectSuffix(item: VideoItem): string {
+    const chain = this.effectFilter.apply(item.effects)
+    return chain === '' ? '' : `,${chain}`
+  }
+
   private placeOnCanvas(
     inputLabel: string,
     outputLabel: string,
     cropPrefix: string,
     resolved: ResolvedTransform,
-    duration: number,
+    item: VideoItem,
   ): string {
+    const duration = item.duration
     const fitLabel = `${outputLabel}fit`
     const bgLabel = `${outputLabel}bg`
     const chains: string[] = [
@@ -217,7 +225,7 @@ export class VideoFilter {
       `color=c=black:s=${this.width}x${this.height}:r=${this.fps}:d=${duration},format=yuv420p,setsar=1[${bgLabel}]`,
     )
     chains.push(
-      `[${bgLabel}][${overlayLabel}]overlay=${this.overlayPosition(resolved, duration)}:shortest=1,setsar=1,fps=${this.fps},format=yuv420p[${outputLabel}]`,
+      `[${bgLabel}][${overlayLabel}]overlay=${this.overlayPosition(resolved, duration)}:shortest=1,setsar=1,fps=${this.fps},format=yuv420p${this.effectSuffix(item)}[${outputLabel}]`,
     )
 
     return chains.join(';')

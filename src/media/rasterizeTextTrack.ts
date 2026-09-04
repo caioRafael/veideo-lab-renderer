@@ -10,6 +10,7 @@ import type {
   TextItem,
 } from '../interfaces/render-plan'
 import { getTextItems } from '../interfaces/render-plan'
+import { rasterizeTextConfig } from '../text/rasterizeConfig'
 
 const SCRIPT_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -97,23 +98,15 @@ function rasterizeTextItem(
   outputDir: string,
 ): OverlayItem {
   const outputPath = path.join(outputDir, `${item.id}-${index}.png`)
-
-  const result = spawnSync(
-    'swift',
-    [
-      SCRIPT_PATH,
-      outputPath,
-      String(plan.width),
-      String(plan.height),
-      item.content,
-      item.fontPath,
-      String(item.fontSize),
-      item.color,
-      String(item.x),
-      String(item.y),
-    ],
-    { encoding: 'utf8' },
+  const configPath = path.join(outputDir, `${item.id}-${index}.json`)
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify(rasterizeTextConfig(item, plan.width, plan.height)),
   )
+
+  const result = spawnSync('swift', [SCRIPT_PATH, outputPath, configPath], {
+    encoding: 'utf8',
+  })
 
   if (result.status !== 0 || !fs.existsSync(outputPath)) {
     throw new Error(

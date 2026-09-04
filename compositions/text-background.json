@@ -1,0 +1,33 @@
+{
+  "output": "text-background.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 5
+    }
+  ],
+  "texts": [
+    {
+      "content": "Legenda com fundo",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 900,
+      "fontSize": 48,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "style": {
+        "align": "center",
+        "background": {
+          "color": "#000000",
+          "opacity": 0.65,
+          "padding": 20
+        }
+      }
+    }
+  ]
+}

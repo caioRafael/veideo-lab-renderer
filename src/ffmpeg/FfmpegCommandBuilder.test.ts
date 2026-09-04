@@ -465,6 +465,51 @@ describe('FfmpegCommandBuilder', () => {
     assert.equal(filterComplex.includes('concat='), false)
   })
 
+  it('applies scene effects before xfade without changing the overlap offset', () => {
+    const args = builder.build(
+      planWith({
+        duration: 9,
+        tracks: [
+          videoTrack([
+            {
+              id: 'video-0',
+              source: '/tmp/a.png',
+              start: 0,
+              duration: 5,
+              mediaType: 'image',
+              effects: { brightness: -0.2 },
+            },
+            {
+              id: 'video-1',
+              source: '/tmp/b.png',
+              start: 4,
+              duration: 5,
+              mediaType: 'image',
+              incomingTransition: { type: 'crossfade', duration: 1 },
+              effects: { brightness: 0.2 },
+            },
+          ]),
+        ],
+      }),
+    )
+
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    assert.ok(filterComplex)
+
+    const leftEffect = filterComplex.indexOf('eq=brightness=-0.2[v0]')
+    const rightEffect = filterComplex.indexOf('eq=brightness=0.2[v1]')
+    const xfadeIndex = filterComplex.indexOf(
+      'xfade=transition=fade:duration=1:offset=4[vout]',
+    )
+
+    assert.equal(leftEffect !== -1, true)
+    assert.equal(rightEffect !== -1, true)
+    assert.equal(xfadeIndex !== -1, true)
+    assert.equal(leftEffect < xfadeIndex, true)
+    assert.equal(rightEffect < xfadeIndex, true)
+    assert.equal(args[args.lastIndexOf('-t') + 1], '9')
+  })
+
   it('applies animated transforms before xfade without changing the overlap offset', () => {
     const args = builder.build(
       planWith({

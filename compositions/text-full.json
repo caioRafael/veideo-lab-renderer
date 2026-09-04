@@ -1,0 +1,38 @@
+{
+  "output": "text-full.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 8
+    }
+  ],
+  "texts": [
+    {
+      "content": "Fase 7\nTexto completo com quebra automatica, fundo, padding, contorno e sombra no mesmo bloco.",
+      "start": 1,
+      "duration": 6,
+      "position": { "x": "center", "y": "center" },
+      "box": { "width": 1100, "height": 420 },
+      "style": {
+        "font": "Arial",
+        "size": 44,
+        "color": "#FFFFFF",
+        "bold": true,
+        "align": "center",
+        "verticalAlign": "middle",
+        "lineSpacing": 1.25,
+        "stroke": { "width": 2, "color": "#000000" },
+        "shadow": { "x": 4, "y": 4, "color": "#000000" },
+        "background": {
+          "color": "#000000",
+          "opacity": 0.55,
+          "padding": 24
+        }
+      }
+    }
+  ]
+}

@@ -15,6 +15,12 @@ import type {
 } from '../interfaces/render-plan'
 import { FontResolver } from '../media/FontResolver'
 import type { MediaResolver } from '../media/MediaResolver'
+import {
+  resolveLineSpacing,
+  resolveTextAlign,
+  resolveTextVerticalAlign,
+} from '../text/textDefaults'
+import { wrapText } from '../text/wrapText'
 
 export function buildRenderPlan(
   composition: Composition,
@@ -82,6 +88,10 @@ function createVideoTrack(
 
     if (scene.transform !== undefined) {
       item.transform = scene.transform
+    }
+
+    if (scene.effects !== undefined) {
+      item.effects = scene.effects
     }
 
     items.push(item)
@@ -192,21 +202,47 @@ function createTextTracks(
     return []
   }
 
-  const items: TextItem[] = texts.map((text, index) => ({
-    id: `text-${index}`,
-    content: text.content,
-    start: text.start,
-    duration: text.duration,
-    x: text.x,
-    y: text.y,
-    fontSize: text.fontSize,
-    color: text.color,
-    fontPath: fontResolver.resolve({
-      ...(text.font === undefined ? {} : { family: text.font }),
-      ...(text.bold === undefined ? {} : { bold: text.bold }),
-      ...(text.italic === undefined ? {} : { italic: text.italic }),
-    }),
-  }))
+  const items: TextItem[] = texts.map((text, index) => {
+    const item: TextItem = {
+      id: `text-${index}`,
+      content:
+        text.box === undefined
+          ? text.content
+          : wrapText(text.content, text.box.width, text.fontSize),
+      start: text.start,
+      duration: text.duration,
+      x: text.x,
+      y: text.y,
+      fontSize: text.fontSize,
+      color: text.color,
+      fontPath: fontResolver.resolve({
+        ...(text.font === undefined ? {} : { family: text.font }),
+        ...(text.bold === undefined ? {} : { bold: text.bold }),
+        ...(text.italic === undefined ? {} : { italic: text.italic }),
+      }),
+      align: resolveTextAlign(text),
+      verticalAlign: resolveTextVerticalAlign(text),
+      lineSpacing: resolveLineSpacing(text),
+    }
+
+    if (text.stroke !== undefined) {
+      item.stroke = text.stroke
+    }
+
+    if (text.shadow !== undefined) {
+      item.shadow = text.shadow
+    }
+
+    if (text.background !== undefined) {
+      item.background = text.background
+    }
+
+    if (text.box !== undefined) {
+      item.box = text.box
+    }
+
+    return item
+  })
 
   return [
     {

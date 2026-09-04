@@ -1,0 +1,28 @@
+{
+  "output": "text-wrapping.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 6
+    }
+  ],
+  "texts": [
+    {
+      "content": "Este e um texto muito grande que deve ser quebrado automaticamente dentro da caixa",
+      "start": 0,
+      "duration": 6,
+      "position": { "x": "center", "y": "center" },
+      "box": { "width": 900 },
+      "style": {
+        "font": "Arial",
+        "size": 48,
+        "color": "#FFFFFF",
+        "align": "left"
+      }
+    }
+  ]
+}

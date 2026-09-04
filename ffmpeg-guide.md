@@ -2022,9 +2022,11 @@ input
   → transform scale/zoom + position/pan (se houver)
   → pad no canvas  OU  overlay em color=black W×H
   → setsar + fps + format=yuv420p
+  → effects (só valores não-default; ordem canônica)
   → transition (concat | fade+concat | xfade)
   → overlay
-  → drawtext (ou PNG rasterizado)
+  → texto (drawtext com wrap/align/stroke/shadow/box, ou PNG rasterizado com a mesma intenção)
+  → áudio (atrim, adelay, amix ou anullsrc)
   → áudio (atrim, adelay, amix ou anullsrc)
   → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURAÇÃO -pix_fmt yuv420p
 ```
@@ -2042,6 +2044,20 @@ format=yuv420p
 ```
 
 Com placement, o `pad` é substituído por overlay no canvas preto. O frame que chega na transição continua W×H, SAR 1, fps F, yuv420p. `scale` da transformação (`iw*S:ih*S` ou expressão de `t`) não é o mesmo `scale` da normalização do canvas.
+
+Effects da cena (estáticos) são traduzidos pelo `EffectFilter` **depois** dessa normalização e **antes** de concat/`fade`/`xfade`. A ordem das propriedades no JSON é ignorada. Defaults não emitem filtro.
+
+```text
+opacity     → lutyuv (mistura YUV com preto; 1 = identidade)
+brightness  → eq=brightness (API 0 = original; mesma escala do `eq`, [-1, 1])
+contrast    → eq=contrast (API 1 = original)
+saturation  → eq=saturation (API 1 = original)
+grayscale   → format=gbrp,colorchannelmixer (mistura Rec.601), format=yuv420p
+sepia       → format=gbrp,colorchannelmixer (matriz clássica 0.393/0.769/…), format=yuv420p
+blur        → boxblur=lr=R:lp=1:cr=R:cp=1  (R = raio em pixels)
+```
+
+`grayscale` e `sepia` ativos compartilham uma conversão RGB. `opacity` não usa alpha no concat: o resultado é a cena sobre o canvas preto. Texto e overlay independentes não passam por esses filtros.
 
 Animação (`{ from, to }`) usa `t` do FFmpeg, com `t_norm = min(max(if(isnan(t),0,t)/duration,0),1)`. Sem `easing` (ou `easing: "linear"`), a progressão é `t_norm`. As outras curvas viram expressions: `pow(t_norm,2)` (`ease-in`), `1-pow(1-t_norm,2)` (`ease-out`), `if(lt(t_norm,0.5),…)` (`ease-in-out`). Scale animado precisa de `eval=frame`. Dimensões animadas são forçadas a pares com `trunc(iw*…/2)*2`. `setpts=PTS-STARTPTS` no conteúdo faz `t = 0` no primeiro frame (necessário em vídeos cujo PTS não começa em 0). O Node não gera frames intermediários.
 

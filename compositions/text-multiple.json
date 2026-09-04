@@ -1,0 +1,59 @@
+{
+  "output": "text-multiple.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 8
+    }
+  ],
+  "texts": [
+    {
+      "content": "Titulo",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 120,
+      "fontSize": 72,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
+    },
+    {
+      "content": "Subtitulo",
+      "start": 1,
+      "duration": 5,
+      "x": "center",
+      "y": 220,
+      "fontSize": 40,
+      "color": "#FFD400",
+      "font": "Georgia",
+      "italic": true
+    },
+    {
+      "content": "Legenda na parte de baixo",
+      "start": 3,
+      "duration": 5,
+      "x": "center",
+      "y": 920,
+      "fontSize": 36,
+      "color": "#FFFFFF",
+      "style": {
+        "background": { "color": "#000000", "opacity": 0.6, "padding": 12 }
+      }
+    },
+    {
+      "content": "video-lab",
+      "start": 0,
+      "duration": 8,
+      "x": 1720,
+      "y": 40,
+      "fontSize": 22,
+      "color": "#FFFFFF",
+      "style": { "align": "right" }
+    }
+  ]
+}

@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import type { VideoEffects } from '../interfaces/effects'
 import type { VideoItem } from '../interfaces/render-plan'
 import type { Transform } from '../interfaces/transform'
 import { VideoFilter } from './VideoFilter'
 
 const filter = new VideoFilter(1920, 1080, 25)
 
-function item(transform?: Transform): VideoItem {
+function item(transform?: Transform, effects?: VideoEffects): VideoItem {
   const videoItem: VideoItem = {
     id: 'video-0',
     source: '/tmp/a.png',
@@ -17,6 +18,10 @@ function item(transform?: Transform): VideoItem {
 
   if (transform !== undefined) {
     videoItem.transform = transform
+  }
+
+  if (effects !== undefined) {
+    videoItem.effects = effects
   }
 
   return videoItem
@@ -621,5 +626,89 @@ describe('VideoFilter', () => {
       assert.match(graph, new RegExp(escapeRegex(progress)))
       assert.match(graph, /color=c=black:s=1920x1080:r=25:d=5/)
     }
+  })
+
+  it('does not add effect filters when effects are omitted or default', () => {
+    const plain = filter.prepare('0:v', 'v0', item())
+    const empty = filter.prepare('0:v', 'v0', item(undefined, {}))
+    const defaults = filter.prepare(
+      '0:v',
+      'v0',
+      item(undefined, { brightness: 0, contrast: 1, blur: 0 }),
+    )
+
+    assert.equal(plain, filter.scale('0:v', 'v0'))
+    assert.equal(empty, plain)
+    assert.equal(defaults, plain)
+    assert.equal(plain.includes('eq='), false)
+    assert.equal(plain.includes('boxblur='), false)
+    assert.equal(plain.includes('lutyuv='), false)
+  })
+
+  it('applies effects after canvas normalize and before the output label', () => {
+    const result = filter.prepare(
+      '0:v',
+      'v0',
+      item(undefined, { brightness: 0.1, contrast: 1.2, blur: 2 }),
+    )
+
+    assert.match(
+      result,
+      /format=yuv420p,eq=brightness=0\.1,eq=contrast=1\.2,boxblur=lr=2:lp=1:cr=2:cp=1\[v0\]$/,
+    )
+    assert.equal(result.includes('overlay='), false)
+  })
+
+  it('applies effects after placement overlay', () => {
+    const steps = filterSteps(
+      filter.prepare('0:v', 'v0', item({ scale: 1.2 }, { saturation: 0.8 })),
+    )
+    const last = steps.at(-1)
+
+    assert.ok(last)
+    assert.match(
+      last,
+      /overlay=\(main_w-overlay_w\)\/2:\(main_h-overlay_h\)\/2:shortest=1,setsar=1,fps=25,format=yuv420p,eq=saturation=0\.8\[v0\]$/,
+    )
+  })
+
+  it('applies effects after media timing and freeze', () => {
+    const result = filter.prepare(
+      '0:v',
+      'v0',
+      videoClip({
+        mediaStart: 30,
+        shortMedia: 'freeze',
+        duration: 8,
+        effects: { brightness: -0.1, blur: 2 },
+      }),
+    )
+
+    assert.match(result, /tpad=stop_mode=clone:stop_duration=8/)
+    assert.match(result, /trim=duration=8/)
+    assert.match(
+      result,
+      /format=yuv420p,eq=brightness=-0\.1,boxblur=lr=2:lp=1:cr=2:cp=1\[v0\]$/,
+    )
+    assert.equal(result.includes('xfade='), false)
+  })
+
+  it('uses canonical effect order even when JSON keys are reversed', () => {
+    const reversed = filter.prepare(
+      '0:v',
+      'v0',
+      item(undefined, { blur: 2, contrast: 1.2, brightness: 0.1 }),
+    )
+    const declared = filter.prepare(
+      '0:v',
+      'v0',
+      item(undefined, { brightness: 0.1, contrast: 1.2, blur: 2 }),
+    )
+
+    assert.equal(reversed, declared)
+    assert.match(
+      reversed,
+      /eq=brightness=0\.1,eq=contrast=1\.2,boxblur=lr=2:lp=1:cr=2:cp=1\[v0\]$/,
+    )
   })
 })

@@ -1,6 +1,15 @@
+import type { VideoEffects } from './effects'
 import type { ShortMediaPolicy } from './media-timing'
 import type { SceneType } from './scene'
-import type { PositionValue } from './text'
+import type {
+  PositionValue,
+  TextAlign,
+  TextBackground,
+  TextBox,
+  TextShadow,
+  TextStroke,
+  TextVerticalAlign,
+} from './text'
 import type { Transform } from './transform'
 import type { Transition } from './transition'
 
@@ -20,6 +29,7 @@ export interface VideoItem extends RenderItem {
   sourceDuration?: number
   incomingTransition?: Transition
   transform?: Transform
+  effects?: VideoEffects
 }
 
 export interface AudioItem extends RenderItem {
@@ -43,6 +53,13 @@ export interface TextItem {
   fontSize: number
   color: string
   fontPath: string
+  align?: TextAlign
+  verticalAlign?: TextVerticalAlign
+  lineSpacing?: number
+  stroke?: TextStroke
+  shadow?: TextShadow
+  background?: TextBackground
+  box?: TextBox
 }
 
 export interface VideoTrack {

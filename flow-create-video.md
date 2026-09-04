@@ -78,7 +78,7 @@ Os `source` são só o nome do arquivo. A pasta vem do tipo:
 
 ### Textos e overlays
 
-Opcionais, com `start` absoluto na timeline. Ver `compositions/texts.json`, `overlay.json` e `full-timeline.json`.
+Opcionais, com `start` absoluto na timeline. `x`/`y` ou `position` são o ponto de referência da caixa. `style.align` / `style.verticalAlign` definem qual borda encosta nesse ponto. `box.width` dispara wrapping no Node. Ver `compositions/text-basic.json`, `text-full.json`, `texts.json`.
 
 Exemplos com cena de vídeo: `compositions/video-photos.json`, `video-and-photos.json`, `video-timeline.json`.
 
@@ -121,7 +121,7 @@ Vídeo com `mediaStart` / `shortMedia`:
 
 Depois do seek, o filtro zera PTS (`setpts=PTS-STARTPTS`) para a cena começar em `t = 0`. Animação e transição usam a duração da cena, não o relógio do arquivo.
 
-### 2. Transformar, padronizar e concatenar vídeo
+### 2. Transformar, padronizar, aplicar efeitos e concatenar vídeo
 
 Sem `transform` (ou só com `crop`), cada cena entra no canvas assim:
 
@@ -136,8 +136,19 @@ Com `scale` / `zoom` / `x` / `y` / `pan`, o `pad` vira overlay no canvas preto �
 
 Valores estáticos (`scale: 1.2`) geram constantes no filtro. Valores animados (`scale: { from, to }`) viram expressões de `t` no FFmpeg. Sem `easing`, a curva é `linear`. Com `ease-in` / `ease-out` / `ease-in-out`, o `VideoFilter` traduz a curva para `pow` / `if` na expression; o Node não gera um frame por instante. O conteúdo passa por `setpts=PTS-STARTPTS` antes dessas expressões, para `t = 0` ser o primeiro frame.
 
+`effects` entram depois do canvas (`format=yuv420p`) e antes da transição. O `EffectFilter` emite só os filtros dos valores não-default, nesta ordem:
+
 ```text
-input → mediaStart/trim → shortMedia (loop/freeze/error) → crop → canvas fit → scale/zoom → position/pan → easing → transition
+opacity (lutyuv → canvas preto)
+ → brightness / contrast / saturation (`eq`)
+ → grayscale / sepia (`format=gbrp` + `colorchannelmixer` + `format=yuv420p`)
+ → blur (`boxblur`)
+```
+
+A ordem das chaves no JSON não muda o graph. `effects: {}` não adiciona filtro. Texto e overlay independentes não passam por essa cadeia.
+
+```text
+input → mediaStart/trim → shortMedia (loop/freeze/error) → crop → canvas fit → scale/zoom → position/pan → easing → effects → transition
 ```
 
 `x`/`y` (e `pan`) são deslocamento a partir do centro, em pixels do canvas.
@@ -158,7 +169,7 @@ Cada item da audio track vira `-i` + `atrim` / `adelay` / `volume` / `apad`. Vá
 
 Overlays: `scale` + `overlay` com `enable='between(t,start,end)'`.
 
-Textos: `drawtext` quando o FFmpeg tem o filtro. Sem `drawtext`, o `Renderer` rasteriza cada texto em PNG temporário, trata como overlay e apaga os arquivos depois do FFmpeg (também se o render falhar).
+Textos: o `TextRenderer` normaliza linhas (wrap no Node). Com `drawtext`, o `TextFilter` emite `fontsize`, `x`/`y` pelo ponto de referência, `line_spacing`, `borderw`, `shadowx`/`shadowy`, `box`/`boxcolor`/`boxborderw`. Sem `drawtext`, o mesmo `TextItem` vira PNG via Swift.
 
 ### 5. Exportar
 
@@ -188,7 +199,7 @@ MP4
 ```
 
 ```text
-scenes image/video ─► Video Track ─► media time ─► crop? ─► fit ─► transform ─► concat/xfade ─► [vbase]
+scenes image/video ─► Video Track ─► media time ─► crop? ─► fit ─► transform ─► effects ─► concat/xfade ─► [vbase]
 overlays            ─► Overlay Track ─► scale + overlay ────────────────────────────────────────► [vout]
 texts               ─► Text Track ─► drawtext ou PNG overlay ───────────────────────────────────┘
 audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ────────────────────────────────────────► [aout]
@@ -211,8 +222,13 @@ pnpm dev -- compositions/animated-with-fade.json
 pnpm dev -- compositions/media-trim.json
 pnpm dev -- compositions/media-loop.json
 pnpm dev -- compositions/media-freeze.json
+pnpm dev -- compositions/effect-brightness.json
+pnpm dev -- compositions/effects-combined.json
+pnpm dev -- compositions/effects-transform.json
+pnpm dev -- compositions/effects-crossfade.json
+pnpm dev -- compositions/effects-media-timing.json
 ```
 
 A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
 
-Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Ver [README](README.md#transformações).
+Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) são estáticos e entram depois do transform. Ver [README](README.md#transformações) e [README](README.md#efeitos).

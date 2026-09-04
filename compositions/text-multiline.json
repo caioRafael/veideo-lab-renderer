@@ -1,0 +1,29 @@
+{
+  "output": "text-multiline.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 5
+    }
+  ],
+  "texts": [
+    {
+      "content": "Linha 1\nLinha 2\nLinha 3",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": "center",
+      "fontSize": 56,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "style": {
+        "align": "center",
+        "lineSpacing": 1.2
+      }
+    }
+  ]
+}

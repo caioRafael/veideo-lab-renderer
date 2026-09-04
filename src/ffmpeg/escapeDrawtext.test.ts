@@ -20,5 +20,10 @@ describe('escapeDrawtext', () => {
     assert.equal(toFfmpegColor('#FFFFFF'), '0xFFFFFF')
     assert.equal(toFfmpegColor('#FFD400'), '0xFFD400')
     assert.equal(toFfmpegColor('white'), 'white')
+    assert.equal(toFfmpegColor('#000000', 0.5), '0x000000@0.5')
+  })
+
+  it('escapes newlines as drawtext \\n', () => {
+    assert.equal(escapeDrawtext('Linha 1\nLinha 2'), 'Linha 1\\nLinha 2')
   })
 })

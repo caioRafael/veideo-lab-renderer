@@ -1243,6 +1243,216 @@ describe('CompositionParser', () => {
     }
   })
 
+  it('omits effects when the scene has none', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+    })
+
+    assert.equal(composition.scenes[0]?.effects, undefined)
+  })
+
+  it('parses an empty effects object', () => {
+    const composition = parser.parse({
+      scenes: [{ ...validScene, effects: {} }],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.effects, {})
+  })
+
+  it('parses a valid effects object', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          effects: {
+            opacity: 0.8,
+            brightness: 0.1,
+            contrast: 1.2,
+            saturation: 0.8,
+            grayscale: 0.5,
+            sepia: 0.2,
+            blur: 2,
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.effects, {
+      opacity: 0.8,
+      brightness: 0.1,
+      contrast: 1.2,
+      saturation: 0.8,
+      grayscale: 0.5,
+      sepia: 0.2,
+      blur: 2,
+    })
+  })
+
+  it('parses multiple effects without depending on key order', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          effects: {
+            blur: 2,
+            contrast: 1.3,
+            brightness: 0.2,
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.effects, {
+      blur: 2,
+      contrast: 1.3,
+      brightness: 0.2,
+    })
+  })
+
+  it('accepts effect boundary values', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          ...validScene,
+          effects: {
+            opacity: 0,
+            brightness: -1,
+            contrast: 0,
+            saturation: 0,
+            grayscale: 1,
+            sepia: 1,
+            blur: 64,
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.effects, {
+      opacity: 0,
+      brightness: -1,
+      contrast: 0,
+      saturation: 0,
+      grayscale: 1,
+      sepia: 1,
+      blur: 64,
+    })
+  })
+
+  it('rejects an effects value that is not an object', () => {
+    const invalid = [null, [], 'bright', 1, true]
+    for (const effects of invalid) {
+      assert.throws(
+        () =>
+          parser.parse({
+            scenes: [{ ...validScene, effects }],
+          }),
+        /effects: expected an object/,
+      )
+    }
+  })
+
+  it('rejects unknown video effects', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              effects: { brightness: 0.2, vignette: 1 },
+            },
+          ],
+        }),
+      /Unknown video effect: vignette/,
+    )
+  })
+
+  it('rejects animated effect objects', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              ...validScene,
+              effects: { brightness: { from: -0.2, to: 0.2 } },
+            },
+          ],
+        }),
+      /effects.brightness: expected a value between -1 and 1/,
+    )
+  })
+
+  it('rejects invalid effect values', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { opacity: 2 } }],
+        }),
+      /effects.opacity: expected a value between 0 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { opacity: -0.1 } }],
+        }),
+      /effects.opacity: expected a value between 0 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { brightness: 1.5 } }],
+        }),
+      /effects.brightness: expected a value between -1 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { contrast: -1 } }],
+        }),
+      /effects.contrast: expected a value between 0 and 4/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { saturation: -0.2 } }],
+        }),
+      /effects.saturation: expected a value between 0 and 3/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { grayscale: 1.2 } }],
+        }),
+      /effects.grayscale: expected a value between 0 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { sepia: -0.1 } }],
+        }),
+      /effects.sepia: expected a value between 0 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [{ ...validScene, effects: { blur: -1 } }],
+        }),
+      /effects.blur: expected a value between 0 and 64/,
+    )
+  })
+
+  it('rejects NaN, Infinity and non-numbers on effects', () => {
+    const invalid = [Number.NaN, Infinity, -Infinity, null, '0.2', {}, []]
+    for (const brightness of invalid) {
+      assert.throws(
+        () =>
+          parser.parse({
+            scenes: [{ ...validScene, effects: { brightness } }],
+          }),
+        /effects.brightness: expected a value between -1 and 1/,
+      )
+    }
+  })
+
   it('omits mediaStart and shortMedia by default', () => {
     const composition = parser.parse({
       scenes: [{ type: 'video', source: 'clip.mp4', duration: 5 }],
@@ -1327,6 +1537,188 @@ describe('CompositionParser', () => {
           scenes: [{ ...validScene, shortMedia: 'loop' }],
         }),
       /shortMedia: expected to be used only on video scenes/,
+    )
+  })
+
+  it('parses the nested text style, position and box', () => {
+    const composition = parser.parse({
+      scenes: [validScene],
+      texts: [
+        {
+          content: 'Linha 1\nLinha 2',
+          start: 1,
+          duration: 3,
+          position: { x: 960, y: 900 },
+          box: { width: 1200, height: 300 },
+          style: {
+            font: 'Arial',
+            size: 64,
+            color: '#FFFFFF',
+            bold: true,
+            align: 'center',
+            verticalAlign: 'bottom',
+            lineSpacing: 1.2,
+            stroke: { width: 2, color: '#000000' },
+            shadow: { x: 4, y: 4, color: '#000000' },
+            background: {
+              color: '#000000',
+              opacity: 0.5,
+              padding: 16,
+            },
+          },
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.texts?.[0], {
+      content: 'Linha 1\nLinha 2',
+      start: 1,
+      duration: 3,
+      x: 960,
+      y: 900,
+      fontSize: 64,
+      color: '#FFFFFF',
+      font: 'Arial',
+      bold: true,
+      align: 'center',
+      verticalAlign: 'bottom',
+      lineSpacing: 1.2,
+      stroke: { width: 2, color: '#000000' },
+      shadow: { x: 4, y: 4, color: '#000000' },
+      background: { color: '#000000', opacity: 0.5, padding: 16 },
+      box: { width: 1200, height: 300 },
+    })
+  })
+
+  it('rejects invalid text style values', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, style: { align: 'banana' } }],
+        }),
+      /style.align: expected "left", "center" or "right"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { verticalAlign: 'center' },
+            },
+          ],
+        }),
+      /style.verticalAlign: expected "top", "middle" or "bottom"/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { background: { color: '#000000', opacity: 2 } },
+            },
+          ],
+        }),
+      /background.opacity: expected a value between 0 and 1/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, style: { lineSpacing: 0 } }],
+        }),
+      /lineSpacing: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { stroke: { width: -1, color: '#000000' } },
+            },
+          ],
+        }),
+      /stroke.width: expected a value greater than or equal to 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { background: { color: '#000000', padding: -4 } },
+            },
+          ],
+        }),
+      /padding: expected a value greater than or equal to 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, box: { width: 0 } }],
+        }),
+      /box.width: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { shadow: { x: 1, y: 1, blur: 4, color: '#000000' } },
+            },
+          ],
+        }),
+      /shadow.blur: expected 0; shadow blur is not supported/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            {
+              content: 'Hi',
+              duration: 4,
+              style: { letterSpacing: 2 },
+            },
+          ],
+        }),
+      /style: unexpected field "letterSpacing"/,
+    )
+  })
+
+  it('rejects NaN and Infinity in new text fields', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [
+            { content: 'Hi', duration: 4, style: { lineSpacing: Number.NaN } },
+          ],
+        }),
+      /lineSpacing: expected a value greater than 0/,
+    )
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [validScene],
+          texts: [{ content: 'Hi', duration: 4, box: { width: Infinity } }],
+        }),
+      /box.width: expected a value greater than 0/,
     )
   })
 })

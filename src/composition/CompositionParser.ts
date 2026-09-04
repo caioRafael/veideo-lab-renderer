@@ -1,10 +1,25 @@
 import type { AudioClip, AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
 import { isEasingName, type EasingName } from '../interfaces/easing'
+import {
+  EFFECT_LIMITS,
+  isVideoEffectName,
+  type VideoEffects,
+} from '../interfaces/effects'
 import { isShortMediaPolicy } from '../interfaces/media-timing'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
-import type { PositionValue, TextClip } from '../interfaces/text'
+import {
+  isHexColor,
+  isTextAlign,
+  isTextVerticalAlign,
+  type PositionValue,
+  type TextBackground,
+  type TextBox,
+  type TextClip,
+  type TextShadow,
+  type TextStroke,
+} from '../interfaces/text'
 import type {
   AnimatedPoint,
   AnimatedValue,
@@ -158,6 +173,10 @@ export class CompositionParser {
       )
     }
 
+    if (value.effects !== undefined) {
+      scene.effects = this.parseEffects(value.effects, `${label}.effects`)
+    }
+
     if (value.audio !== undefined) {
       if (!Array.isArray(value.audio)) {
         throw this.invalid(`${label}.audio`, 'expected an array')
@@ -178,6 +197,84 @@ export class CompositionParser {
     }
 
     return scene
+  }
+
+  private parseEffects(value: unknown, label: string): VideoEffects {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    const unknownKey = Object.keys(value).find((key) => !isVideoEffectName(key))
+    if (unknownKey !== undefined) {
+      throw this.invalid(label, `Unknown video effect: ${unknownKey}`)
+    }
+
+    const effects: VideoEffects = {}
+
+    if (value.opacity !== undefined) {
+      effects.opacity = this.parseBoundedNumber(
+        value.opacity,
+        `${label}.opacity`,
+        EFFECT_LIMITS.opacity.min,
+        EFFECT_LIMITS.opacity.max,
+      )
+    }
+
+    if (value.brightness !== undefined) {
+      effects.brightness = this.parseBoundedNumber(
+        value.brightness,
+        `${label}.brightness`,
+        EFFECT_LIMITS.brightness.min,
+        EFFECT_LIMITS.brightness.max,
+      )
+    }
+
+    if (value.contrast !== undefined) {
+      effects.contrast = this.parseBoundedNumber(
+        value.contrast,
+        `${label}.contrast`,
+        EFFECT_LIMITS.contrast.min,
+        EFFECT_LIMITS.contrast.max,
+      )
+    }
+
+    if (value.saturation !== undefined) {
+      effects.saturation = this.parseBoundedNumber(
+        value.saturation,
+        `${label}.saturation`,
+        EFFECT_LIMITS.saturation.min,
+        EFFECT_LIMITS.saturation.max,
+      )
+    }
+
+    if (value.grayscale !== undefined) {
+      effects.grayscale = this.parseBoundedNumber(
+        value.grayscale,
+        `${label}.grayscale`,
+        EFFECT_LIMITS.grayscale.min,
+        EFFECT_LIMITS.grayscale.max,
+      )
+    }
+
+    if (value.sepia !== undefined) {
+      effects.sepia = this.parseBoundedNumber(
+        value.sepia,
+        `${label}.sepia`,
+        EFFECT_LIMITS.sepia.min,
+        EFFECT_LIMITS.sepia.max,
+      )
+    }
+
+    if (value.blur !== undefined) {
+      effects.blur = this.parseBoundedNumber(
+        value.blur,
+        `${label}.blur`,
+        EFFECT_LIMITS.blur.min,
+        EFFECT_LIMITS.blur.max,
+      )
+    }
+
+    return effects
   }
 
   private parseTransform(value: unknown, label: string): Transform {
@@ -465,6 +562,55 @@ export class CompositionParser {
       throw this.invalid(label, 'expected an object')
     }
 
+    const position = this.parseOptionalTextPosition(
+      value.position,
+      `${label}.position`,
+    )
+    const style = this.parseOptionalTextStyle(value.style, `${label}.style`)
+
+    this.assertExclusive(
+      value.x,
+      position?.x,
+      `${label}.x`,
+      'expected either x or position.x, not both',
+    )
+    this.assertExclusive(
+      value.y,
+      position?.y,
+      `${label}.y`,
+      'expected either y or position.y, not both',
+    )
+    this.assertExclusive(
+      value.fontSize,
+      style?.fontSize,
+      `${label}.fontSize`,
+      'expected either fontSize or style.size, not both',
+    )
+    this.assertExclusive(
+      value.color,
+      style?.color,
+      `${label}.color`,
+      'expected either color or style.color, not both',
+    )
+    this.assertExclusive(
+      value.font,
+      style?.font,
+      `${label}.font`,
+      'expected either font or style.font, not both',
+    )
+    this.assertExclusive(
+      value.bold,
+      style?.bold,
+      `${label}.bold`,
+      'expected either bold or style.bold, not both',
+    )
+    this.assertExclusive(
+      value.italic,
+      style?.italic,
+      `${label}.italic`,
+      'expected either italic or style.italic, not both',
+    )
+
     const clip: TextClip = {
       content: this.parseRequiredString(value.content, `${label}.content`),
       start: this.parseOptionalStart(value.start, `${label}.start`),
@@ -472,34 +618,339 @@ export class CompositionParser {
         value.duration,
         `${label}.duration`,
       ),
-      x: this.parsePosition(value.x, `${label}.x`, 'center'),
-      y: this.parsePosition(value.y, `${label}.y`, 'center'),
+      x: this.parsePosition(position?.x ?? value.x, `${label}.x`, 'center'),
+      y: this.parsePosition(position?.y ?? value.y, `${label}.y`, 'center'),
       fontSize:
-        value.fontSize === undefined
+        style?.fontSize === undefined && value.fontSize === undefined
           ? COMPOSITION_DEFAULTS.textFontSize
           : this.parseRequiredPositiveNumber(
-              value.fontSize,
+              style?.fontSize ?? value.fontSize,
               `${label}.fontSize`,
             ),
       color:
-        value.color === undefined
+        style?.color === undefined && value.color === undefined
           ? COMPOSITION_DEFAULTS.textColor
-          : this.parseRequiredString(value.color, `${label}.color`),
+          : this.parseRequiredString(
+              style?.color ?? value.color,
+              `${label}.color`,
+            ),
     }
 
-    if (value.font !== undefined) {
-      clip.font = this.parseRequiredString(value.font, `${label}.font`)
+    const font = style?.font ?? value.font
+    if (font !== undefined) {
+      clip.font = this.parseRequiredString(font, `${label}.font`)
     }
 
-    if (value.bold !== undefined) {
-      clip.bold = this.parseBoolean(value.bold, `${label}.bold`)
+    const bold = style?.bold ?? value.bold
+    if (bold !== undefined) {
+      clip.bold = this.parseBoolean(bold, `${label}.bold`)
     }
 
-    if (value.italic !== undefined) {
-      clip.italic = this.parseBoolean(value.italic, `${label}.italic`)
+    const italic = style?.italic ?? value.italic
+    if (italic !== undefined) {
+      clip.italic = this.parseBoolean(italic, `${label}.italic`)
+    }
+
+    if (style?.align !== undefined) {
+      clip.align = style.align
+    }
+
+    if (style?.verticalAlign !== undefined) {
+      clip.verticalAlign = style.verticalAlign
+    }
+
+    if (style?.lineSpacing !== undefined) {
+      clip.lineSpacing = style.lineSpacing
+    }
+
+    if (style?.stroke !== undefined) {
+      clip.stroke = style.stroke
+    }
+
+    if (style?.shadow !== undefined) {
+      clip.shadow = style.shadow
+    }
+
+    if (style?.background !== undefined) {
+      clip.background = style.background
+    }
+
+    if (value.box !== undefined) {
+      clip.box = this.parseTextBox(value.box, `${label}.box`)
     }
 
     return clip
+  }
+
+  private parseOptionalTextPosition(
+    value: unknown,
+    label: string,
+  ): { x?: PositionValue; y?: unknown } | undefined {
+    if (value === undefined) {
+      return undefined
+    }
+
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(value, ['x', 'y'], label)
+
+    const position: { x?: PositionValue; y?: unknown } = {}
+    if (value.x !== undefined) {
+      position.x = this.parsePosition(value.x, `${label}.x`, 'center')
+    }
+    if (value.y !== undefined) {
+      position.y = value.y
+    }
+    return position
+  }
+
+  private parseOptionalTextStyle(
+    value: unknown,
+    label: string,
+  ):
+    | {
+        font?: unknown
+        fontSize?: number
+        color?: string
+        bold?: unknown
+        italic?: unknown
+        align?: TextClip['align']
+        verticalAlign?: TextClip['verticalAlign']
+        lineSpacing?: number
+        stroke?: TextStroke
+        shadow?: TextShadow
+        background?: TextBackground
+      }
+    | undefined {
+    if (value === undefined) {
+      return undefined
+    }
+
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(
+      value,
+      [
+        'font',
+        'size',
+        'color',
+        'bold',
+        'italic',
+        'align',
+        'verticalAlign',
+        'lineSpacing',
+        'stroke',
+        'shadow',
+        'background',
+      ],
+      label,
+    )
+
+    const style: {
+      font?: unknown
+      fontSize?: number
+      color?: string
+      bold?: unknown
+      italic?: unknown
+      align?: TextClip['align']
+      verticalAlign?: TextClip['verticalAlign']
+      lineSpacing?: number
+      stroke?: TextStroke
+      shadow?: TextShadow
+      background?: TextBackground
+    } = {}
+
+    if (value.font !== undefined) {
+      style.font = value.font
+    }
+
+    if (value.size !== undefined) {
+      style.fontSize = this.parseRequiredPositiveNumber(
+        value.size,
+        `${label}.size`,
+      )
+    }
+
+    if (value.color !== undefined) {
+      style.color = this.parseRequiredString(value.color, `${label}.color`)
+    }
+
+    if (value.bold !== undefined) {
+      style.bold = value.bold
+    }
+
+    if (value.italic !== undefined) {
+      style.italic = value.italic
+    }
+
+    if (value.align !== undefined) {
+      if (!isTextAlign(value.align)) {
+        throw this.invalid(
+          label + '.align',
+          'expected "left", "center" or "right"',
+        )
+      }
+      style.align = value.align
+    }
+
+    if (value.verticalAlign !== undefined) {
+      if (!isTextVerticalAlign(value.verticalAlign)) {
+        throw this.invalid(
+          `${label}.verticalAlign`,
+          'expected "top", "middle" or "bottom"',
+        )
+      }
+      style.verticalAlign = value.verticalAlign
+    }
+
+    if (value.lineSpacing !== undefined) {
+      style.lineSpacing = this.parseRequiredPositiveNumber(
+        value.lineSpacing,
+        `${label}.lineSpacing`,
+      )
+    }
+
+    if (value.stroke !== undefined) {
+      style.stroke = this.parseTextStroke(value.stroke, `${label}.stroke`)
+    }
+
+    if (value.shadow !== undefined) {
+      style.shadow = this.parseTextShadow(value.shadow, `${label}.shadow`)
+    }
+
+    if (value.background !== undefined) {
+      style.background = this.parseTextBackground(
+        value.background,
+        `${label}.background`,
+      )
+    }
+
+    return style
+  }
+
+  private parseTextStroke(value: unknown, label: string): TextStroke {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(value, ['width', 'color'], label)
+
+    return {
+      width: this.parseNonNegativeNumber(value.width, `${label}.width`),
+      color: this.parseHexColor(value.color, `${label}.color`),
+    }
+  }
+
+  private parseTextShadow(value: unknown, label: string): TextShadow {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(value, ['x', 'y', 'blur', 'color'], label)
+
+    if (value.blur !== undefined && value.blur !== 0) {
+      throw this.invalid(
+        `${label}.blur`,
+        'expected 0; shadow blur is not supported',
+      )
+    }
+
+    return {
+      x:
+        value.x === undefined
+          ? 0
+          : this.parseFiniteNumber(value.x, `${label}.x`),
+      y:
+        value.y === undefined
+          ? 0
+          : this.parseFiniteNumber(value.y, `${label}.y`),
+      color: this.parseHexColor(value.color, `${label}.color`),
+    }
+  }
+
+  private parseTextBackground(value: unknown, label: string): TextBackground {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(
+      value,
+      ['color', 'opacity', 'padding', 'radius'],
+      label,
+    )
+
+    if (value.radius !== undefined && value.radius !== 0) {
+      throw this.invalid(
+        `${label}.radius`,
+        'expected 0; background radius is not supported',
+      )
+    }
+
+    const opacity =
+      value.opacity === undefined
+        ? 1
+        : this.parseUnitInterval(value.opacity, `${label}.opacity`)
+
+    return {
+      color: this.parseHexColor(value.color, `${label}.color`),
+      opacity,
+      padding:
+        value.padding === undefined
+          ? 0
+          : this.parseNonNegativeNumber(value.padding, `${label}.padding`),
+    }
+  }
+
+  private parseTextBox(value: unknown, label: string): TextBox {
+    if (!this.isRecord(value)) {
+      throw this.invalid(label, 'expected an object')
+    }
+
+    this.assertKnownKeys(value, ['width', 'height'], label)
+
+    const box: TextBox = {
+      width: this.parseRequiredPositiveNumber(value.width, `${label}.width`),
+    }
+
+    if (value.height !== undefined) {
+      box.height = this.parseRequiredPositiveNumber(
+        value.height,
+        `${label}.height`,
+      )
+    }
+
+    return box
+  }
+
+  private parseHexColor(value: unknown, label: string): string {
+    if (!isHexColor(value)) {
+      throw this.invalid(label, 'expected a hex color like "#FFFFFF"')
+    }
+
+    return value
+  }
+
+  private parseUnitInterval(value: unknown, label: string): number {
+    if (!this.isFiniteNumber(value) || value < 0 || value > 1) {
+      throw this.invalid(label, 'expected a value between 0 and 1')
+    }
+
+    return value
+  }
+
+  private assertExclusive(
+    left: unknown,
+    right: unknown,
+    label: string,
+    expected: string,
+  ): void {
+    if (left !== undefined && right !== undefined) {
+      throw this.invalid(label, expected)
+    }
   }
 
   private parseOverlayClip(value: unknown, label: string): OverlayClip {
@@ -621,6 +1072,19 @@ export class CompositionParser {
   private parseFiniteNumber(value: unknown, label: string): number {
     if (!this.isFiniteNumber(value)) {
       throw this.invalid(label, 'expected a finite number')
+    }
+
+    return value
+  }
+
+  private parseBoundedNumber(
+    value: unknown,
+    label: string,
+    min: number,
+    max: number,
+  ): number {
+    if (!this.isFiniteNumber(value) || value < min || value > max) {
+      throw this.invalid(label, `expected a value between ${min} and ${max}`)
     }
 
     return value

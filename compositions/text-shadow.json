@@ -1,0 +1,33 @@
+{
+  "output": "text-shadow.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "input.png",
+      "duration": 5
+    }
+  ],
+  "texts": [
+    {
+      "content": "Sombra",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": "center",
+      "fontSize": 88,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true,
+      "style": {
+        "shadow": {
+          "x": 6,
+          "y": 6,
+          "color": "#000000"
+        }
+      }
+    }
+  ]
+}

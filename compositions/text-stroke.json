@@ -1,0 +1,32 @@
+{
+  "output": "text-stroke.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 5
+    }
+  ],
+  "texts": [
+    {
+      "content": "Contorno",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": "center",
+      "fontSize": 96,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true,
+      "style": {
+        "stroke": {
+          "width": 4,
+          "color": "#000000"
+        }
+      }
+    }
+  ]
+}

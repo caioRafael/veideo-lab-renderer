@@ -287,7 +287,80 @@ describe('buildRenderPlan', () => {
     assert.equal(item?.y, 140)
     assert.equal(item?.fontSize, 72)
     assert.equal(item?.color, '#FFFFFF')
+    assert.equal(item?.align, 'center')
+    assert.equal(item?.verticalAlign, 'top')
+    assert.equal(item?.lineSpacing, 1)
     assert.ok(item?.fontPath)
+  })
+
+  it('wraps text to the box width and keeps global timing', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          { type: 'image', source: 'a.png', duration: 5 },
+          { type: 'image', source: 'c.png', duration: 5 },
+        ],
+        texts: [
+          {
+            content:
+              'Este e um texto muito grande que deve ser quebrado automaticamente',
+            start: 2,
+            duration: 6,
+            x: 'center',
+            y: 200,
+            fontSize: 48,
+            color: '#FFFFFF',
+            box: { width: 400 },
+            align: 'center',
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const [item] = getTextItems(plan)
+    assert.ok(item)
+    assert.ok(item.content.includes('\n'))
+    assert.equal(item.start, 2)
+    assert.equal(item.duration, 6)
+    assert.equal(item.align, 'center')
+    assert.equal(plan.duration, 10)
+  })
+
+  it('places multiple texts independently on the same track', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 10 }],
+        texts: [
+          {
+            content: 'Title',
+            start: 0,
+            duration: 4,
+            x: 'center',
+            y: 80,
+            fontSize: 64,
+            color: '#FFFFFF',
+          },
+          {
+            content: 'Caption',
+            start: 3,
+            duration: 5,
+            x: 80,
+            y: 900,
+            fontSize: 32,
+            color: '#FFFFFF',
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getTextItems(plan)
+    assert.equal(items.length, 2)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[1]?.start, 3)
+    assert.equal(items[0]?.align, 'center')
+    assert.equal(items[1]?.align, 'left')
   })
 
   it('resolves a distinct font file per text style', () => {
@@ -544,6 +617,78 @@ describe('buildRenderPlan', () => {
     )
 
     assert.equal(getVideoTrack(plan)?.items[0]?.transform, undefined)
+  })
+
+  it('preserves effects intent on the video item', () => {
+    const effects = {
+      opacity: 0.85,
+      brightness: 0.1,
+      contrast: 1.2,
+      saturation: 0.8,
+      grayscale: 0.1,
+      sepia: 0.15,
+      blur: 1,
+    }
+
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          {
+            type: 'image',
+            source: 'a.png',
+            duration: 5,
+            effects,
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    assert.deepEqual(getVideoTrack(plan)?.items[0]?.effects, effects)
+    assert.equal(plan.duration, 5)
+  })
+
+  it('omits effects from the video item when the scene has none', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [{ type: 'image', source: 'a.png', duration: 5 }],
+      }),
+      resolver,
+    )
+
+    assert.equal(getVideoTrack(plan)?.items[0]?.effects, undefined)
+  })
+
+  it('copies effects without changing scene placements', () => {
+    const plan = buildRenderPlan(
+      compositionWith({
+        scenes: [
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 5,
+            effects: { brightness: -0.2 },
+          },
+          {
+            type: 'video',
+            source: 'clip.mp4',
+            duration: 5,
+            effects: { brightness: 0.2 },
+            transition: { type: 'crossfade', duration: 1 },
+          },
+        ],
+      }),
+      resolver,
+    )
+
+    const items = getVideoTrack(plan)?.items ?? []
+    assert.equal(plan.duration, 9)
+    assert.equal(items[0]?.start, 0)
+    assert.equal(items[0]?.duration, 5)
+    assert.deepEqual(items[0]?.effects, { brightness: -0.2 })
+    assert.equal(items[1]?.start, 4)
+    assert.equal(items[1]?.duration, 5)
+    assert.deepEqual(items[1]?.effects, { brightness: 0.2 })
   })
 
   it('copies mediaStart and shortMedia without changing scene placement', () => {

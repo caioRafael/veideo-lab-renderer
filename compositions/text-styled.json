@@ -1,0 +1,29 @@
+{
+  "output": "text-styled.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 6
+    }
+  ],
+  "texts": [
+    {
+      "content": "Estilo aninhado",
+      "start": 0,
+      "duration": 6,
+      "position": { "x": "center", "y": 200 },
+      "style": {
+        "font": "Georgia",
+        "size": 64,
+        "color": "#FFD400",
+        "italic": true,
+        "align": "center",
+        "stroke": { "width": 2, "color": "#000000" }
+      }
+    }
+  ]
+}

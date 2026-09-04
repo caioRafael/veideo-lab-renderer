@@ -1,0 +1,26 @@
+{
+  "output": "text-basic.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 5
+    }
+  ],
+  "texts": [
+    {
+      "content": "Video Lab",
+      "start": 0,
+      "duration": 5,
+      "x": "center",
+      "y": 140,
+      "fontSize": 72,
+      "color": "#FFFFFF",
+      "font": "Arial",
+      "bold": true
+    }
+  ]
+}

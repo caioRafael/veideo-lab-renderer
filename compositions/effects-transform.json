@@ -1,0 +1,31 @@
+{
+  "output": "effects-transform.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 6,
+      "mediaStart": 20,
+      "transform": {
+        "scale": {
+          "from": 1,
+          "to": 1.2,
+          "easing": "ease-in"
+        },
+        "pan": {
+          "from": { "x": 0, "y": 0 },
+          "to": { "x": 80, "y": -30 },
+          "easing": "ease-out"
+        }
+      },
+      "effects": {
+        "brightness": 0.1,
+        "contrast": 1.2,
+        "saturation": 0.8
+      }
+    }
+  ]
+}

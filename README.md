@@ -2,7 +2,7 @@
 
 Laboratório em TypeScript para montar vídeos com **FFmpeg** a partir de um arquivo JSON de composição.
 
-Você descreve cenas (imagem/vídeo), transformações estáticas ou animadas, transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
+Você descreve cenas (imagem/vídeo), transformações estáticas ou animadas, efeitos visuais estáticos, transições (`fade` / `crossfade`), áudios, textos e overlays; o projeto valida a composição, monta um `RenderPlan` com tracks e gera o MP4.
 
 ## Requisitos
 
@@ -67,6 +67,11 @@ pnpm dev -- compositions/easing-in.json
 pnpm dev -- compositions/easing-out.json
 pnpm dev -- compositions/easing-in-out.json
 pnpm dev -- compositions/easing-ken-burns.json
+pnpm dev -- compositions/effect-brightness.json
+pnpm dev -- compositions/effects-combined.json
+pnpm dev -- compositions/effects-transform.json
+pnpm dev -- compositions/effects-crossfade.json
+pnpm dev -- compositions/effects-media-timing.json
 ```
 
 A saída padrão é `output/videos/output.mp4`.
@@ -145,6 +150,7 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | `keepAudio` | (vídeo) mantém o áudio original do arquivo |
 | `transition` | transição **a partir da cena anterior** (`fade` ou `crossfade`) |
 | `transform` | transformação visual da mídia da cena (estática ou animada) |
+| `effects` | efeitos visuais estáticos da mídia da cena (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) |
 
 A posição da cena na composição (`scenePlacements`) é independente do ponto de leitura do arquivo:
 
@@ -244,6 +250,8 @@ position / pan  (estático ou animado; overlay no canvas)
  ↓
 setsar + fps + format=yuv420p
  ↓
+effects      (estáticos; só a mídia da cena)
+ ↓
 transition
 ```
 
@@ -252,6 +260,50 @@ Exemplos estáticos: `compositions/transform-scale.json`, `transform-position.js
 Exemplos animados: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`, `animated-with-fade.json`.
 
 Exemplos de easing: `compositions/easing-linear.json`, `easing-in.json`, `easing-out.json`, `easing-in-out.json`, `easing-ken-burns.json`.
+
+### Efeitos
+
+`effects` descreve ajustes visuais **estáticos** da mídia da cena. Não afeta áudio, texto nem overlay independente. Não há `from`/`to`, keyframes nem easing nesta fase. A ordem das chaves no JSON é ignorada.
+
+```json
+{
+  "effects": {
+    "opacity": 0.85,
+    "brightness": 0.1,
+    "contrast": 1.2,
+    "saturation": 0.8,
+    "grayscale": 0.1,
+    "sepia": 0.15,
+    "blur": 1
+  }
+}
+```
+
+Sem `effects`, ou com `effects: {}`, o comportamento é o mesmo de antes. Defaults não geram filtro.
+
+| Campo | Default | Limite | Semântica |
+|---|---|---|---|
+| `opacity` | `1` | `[0, 1]` | `1` = opaco. `0` = transparente (mistura a cena com o canvas preto) |
+| `brightness` | `0` | `[-1, 1]` | `0` = original. `> 0` mais clara. `< 0` mais escura |
+| `contrast` | `1` | `[0, 4]` | `1` = original. `> 1` mais contraste. `0` imagem achatada |
+| `saturation` | `1` | `[0, 3]` | `1` = original. `0` = cinza. `> 1` mais saturada |
+| `grayscale` | `0` | `[0, 1]` | `0` = original. `1` = cinza Rec.601. `0.5` = 50% |
+| `sepia` | `0` | `[0, 1]` | `0` = original. `1` = sepia máximo da matriz simples |
+| `blur` | `0` | `[0, 64]` | raio em pixels (`boxblur`, um passe) |
+
+Efeito desconhecido (`vignette`, `glow`, …) é rejeitado. Valores animados (`{ from, to }`), `NaN`, `Infinity`, strings e objetos inválidos também.
+
+Ordem canônica (independente do JSON):
+
+```text
+opacity → brightness → contrast → saturation → grayscale → sepia → blur
+```
+
+Effects entram **depois** de crop / fit / transform e **antes** da transição. Cada cena chega no `fade`/`crossfade` já com os próprios efeitos. `mediaStart`, `shortMedia`, `scenePlacements` e a duração da animação não mudam.
+
+O parser valida. O RenderPlan guarda a intenção (`VideoItem.effects`). O `EffectFilter` traduz para FFmpeg.
+
+Exemplos: `compositions/effect-opacity.json`, `effect-brightness.json`, `effect-contrast.json`, `effect-saturation.json`, `effect-grayscale.json`, `effect-sepia.json`, `effect-blur.json`, `effects-combined.json`, `effects-transform.json`, `effects-crossfade.json`, `effects-media-timing.json`.
 
 ### Áudio
 
@@ -267,7 +319,9 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 
 ### Textos e overlays
 
-Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados no MP4.
+Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados no MP4. O timing (`start` / `duration`) é absoluto na timeline da composição — não segue `mediaStart` nem transições.
+
+O JSON antigo continua válido:
 
 ```json
 {
@@ -283,30 +337,53 @@ Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados
       "font": "Arial",
       "bold": true
     }
-  ],
-  "overlays": [
-    {
-      "source": "input.png",
-      "start": 1,
-      "duration": 5,
-      "x": 80,
-      "y": 80,
-      "width": 280,
-      "height": 280
-    }
   ]
 }
 ```
 
+Campos novos são opcionais. `style` e `position` são aliases que o parser achata nos campos da clip:
+
+```json
+{
+  "content": "Linha 1\nLinha 2",
+  "start": 1,
+  "duration": 6,
+  "position": { "x": "center", "y": "center" },
+  "box": { "width": 1100, "height": 420 },
+  "style": {
+    "font": "Arial",
+    "size": 44,
+    "color": "#FFFFFF",
+    "align": "center",
+    "verticalAlign": "middle",
+    "lineSpacing": 1.25,
+    "stroke": { "width": 2, "color": "#000000" },
+    "shadow": { "x": 4, "y": 4, "color": "#000000" },
+    "background": { "color": "#000000", "opacity": 0.55, "padding": 24 }
+  }
+}
+```
+
+`x` / `y` (ou `position`) são o **ponto de referência da caixa de texto**, não necessariamente o canto superior esquerdo.
+
+| `align` | A caixa encosta nesse ponto em X |
+|---|---|
+| `left` (default se `x` é número) | borda esquerda |
+| `center` (default se `x` é `"center"`) | centro |
+| `right` | borda direita |
+
+| `verticalAlign` | A caixa encosta nesse ponto em Y |
+|---|---|
+| `top` (default se `y` é número) | topo |
+| `middle` (default se `y` é `"center"`) | meio |
+| `bottom` | base |
+
+`lineSpacing` é **multiplicador** da altura da linha (`fontSize × lineSpacing`). Default `1` preserva o texto antigo. `box.width` é a largura máxima; o wrapping é feito no Node, de forma determinística, antes do FFmpeg. `\\n` no `content` vira quebra explícita. O fundo envolve o texto real (+ padding), não o canvas.
+
+Sem `drawtext` no FFmpeg, o `Renderer` rasteriza cada texto em PNG (Swift) com os mesmos estilos e trata como overlay.
+
 | Campo | Descrição |
 |---|---|
-| `texts[].content` | texto exibido |
-| `texts[].start` / `duration` | posição absoluta na timeline |
-| `texts[].x` / `y` | posição (`center` ou pixel) |
-| `texts[].fontSize` | tamanho da fonte |
-| `texts[].color` | cor (`#FFFFFF` ou nome) |
-| `texts[].font` | família do sistema (`Arial`) ou arquivo (`Custom.ttf` em `input/fonts/`) |
-| `texts[].bold` / `italic` | variante da fonte |
 | `overlays[].source` | imagem em `input/images/` |
 | `overlays[].start` / `duration` | posição absoluta na timeline |
 | `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
@@ -381,6 +458,27 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - `compositions/media-freeze.json` — último frame até o fim da cena
 - `compositions/media-trim-crossfade.json` — `mediaStart` em B sem mover o crossfade
 - `compositions/media-trim-animated.json` — trim + scale/x animados na duração da cena
+- `compositions/text-basic.json` — texto antigo (x/y/fontSize)
+- `compositions/text-multiline.json` — quebras explícitas
+- `compositions/text-wrapping.json` — `box.width` com wrap automático
+- `compositions/text-alignment.json` — left/center/right e top/middle/bottom
+- `compositions/text-background.json` — fundo + padding
+- `compositions/text-stroke.json` — contorno
+- `compositions/text-shadow.json` — sombra (sem blur)
+- `compositions/text-styled.json` — `style` + `position`
+- `compositions/text-multiple.json` — título, subtítulo, legenda e watermark
+- `compositions/text-full.json` — wrap, alinhamento, fundo, stroke e sombra
+- `compositions/effect-opacity.json` — opacidade 0.6 (mistura com o canvas preto)
+- `compositions/effect-brightness.json` — cena mais clara
+- `compositions/effect-contrast.json` — contraste 1.4
+- `compositions/effect-saturation.json` — saturação reduzida
+- `compositions/effect-grayscale.json` — cinza completo
+- `compositions/effect-sepia.json` — sepia 0.85
+- `compositions/effect-blur.json` — blur de 4px
+- `compositions/effects-combined.json` — os sete efeitos juntos
+- `compositions/effects-transform.json` — scale/pan animados + brightness/contrast/saturation
+- `compositions/effects-crossfade.json` — A escura + B clara, crossfade 1s (total 9s)
+- `compositions/effects-media-timing.json` — mediaStart 30 + freeze + effects
 
 ## Limitações conhecidas
 
@@ -392,6 +490,10 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - Fade visual não insere um segmento extra de preto: 5s + 5s com fade de 1s continua durando **10s**.
 - Áudio não faz crossfade; no overlap visual, `keepAudio` e áudio de cena podem se misturar no `amix`.
 - `keepAudio` e áudio de cena não herdam `mediaStart` do vídeo.
+- Sombra de texto não tem blur (`shadow.blur` só aceita `0`). Fundo de texto não tem radius.
+- O wrapping usa uma estimativa de largura por caractere; o desenho final (drawtext ou PNG) pode ser um pouco mais estreito ou largo que a caixa.
+- Effects são estáticos. `opacity` mistura a cena com o canvas preto (YUV); não fura a cena seguinte fora do `crossfade`.
+- `grayscale` e `sepia` passam por `format=gbrp` + `colorchannelmixer` e voltam para `yuv420p`.
 
 ## Arquitetura
 
@@ -414,7 +516,7 @@ FFmpeg
 O `RenderPlan` é uma timeline de tracks independentes:
 
 ```text
-Video Track     cenas em sequência (transform opcional); overlap só com crossfade
+Video Track     cenas em sequência (transform e effects opcionais); overlap só com crossfade
 Audio Track     clips com start absoluto
 Overlay Track   imagens sobrepostas
 Text Track      drawtext (ou PNG rasterizado)
@@ -457,4 +559,4 @@ src/
 ## Documentação
 
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
-- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, áudio)
+- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, effects, áudio)

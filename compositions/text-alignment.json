@@ -1,0 +1,44 @@
+{
+  "output": "text-alignment.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": "flamengo.png",
+      "duration": 6
+    }
+  ],
+  "texts": [
+    {
+      "content": "esquerda",
+      "start": 0,
+      "duration": 6,
+      "x": 80,
+      "y": 80,
+      "fontSize": 42,
+      "color": "#FFFFFF",
+      "style": { "align": "left", "verticalAlign": "top" }
+    },
+    {
+      "content": "centro",
+      "start": 0,
+      "duration": 6,
+      "x": "center",
+      "y": "center",
+      "fontSize": 42,
+      "color": "#FFD400",
+      "style": { "align": "center", "verticalAlign": "middle" }
+    },
+    {
+      "content": "direita",
+      "start": 0,
+      "duration": 6,
+      "position": { "x": 1840, "y": 1000 },
+      "fontSize": 42,
+      "color": "#FFFFFF",
+      "style": { "align": "right", "verticalAlign": "bottom" }
+    }
+  ]
+}

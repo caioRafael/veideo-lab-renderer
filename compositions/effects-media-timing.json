@@ -1,0 +1,21 @@
+{
+  "output": "effects-media-timing.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 8,
+      "mediaStart": 30,
+      "shortMedia": "freeze",
+      "keepAudio": true,
+      "effects": {
+        "brightness": -0.1,
+        "contrast": 1.15,
+        "blur": 2
+      }
+    }
+  ]
+}

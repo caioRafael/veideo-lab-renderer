@@ -1,0 +1,30 @@
+{
+  "output": "effects-crossfade.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 5,
+      "mediaStart": 10,
+      "effects": {
+        "brightness": -0.2
+      }
+    },
+    {
+      "type": "video",
+      "source": "gloria-eterna.mp4",
+      "duration": 5,
+      "mediaStart": 40,
+      "effects": {
+        "brightness": 0.2
+      },
+      "transition": {
+        "type": "crossfade",
+        "duration": 1
+      }
+    }
+  ]
+}
