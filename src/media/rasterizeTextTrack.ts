@@ -14,6 +14,7 @@ import {
   RenderCancelledError,
   throwIfAborted,
 } from '../renderer/RenderCancelledError'
+import { computeTextRasterBounds } from '../text/textBounds'
 import { rasterizeTextConfig } from '../text/rasterizeConfig'
 
 const SCRIPT_PATH = path.join(
@@ -132,15 +133,17 @@ async function rasterizeTextItem(
 
   await runSwift(outputPath, configPath, item.content, signal)
 
+  const bounds = computeTextRasterBounds(item, plan.width, plan.height)
+
   return {
     id: `overlay-text-${index}`,
     source: outputPath,
     start: item.start,
     duration: item.duration,
-    x: 0,
-    y: 0,
-    width: plan.width,
-    height: plan.height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
   }
 }
 

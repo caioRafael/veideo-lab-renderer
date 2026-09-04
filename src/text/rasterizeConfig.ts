@@ -1,4 +1,5 @@
 import type { TextItem } from '../interfaces/render-plan'
+import { computeTextRasterBounds } from './textBounds'
 import {
   DEFAULT_LINE_SPACING,
   defaultTextAlign,
@@ -28,15 +29,16 @@ export function rasterizeTextConfig(
   width: number,
   height: number,
 ): RasterizeTextConfig {
+  const bounds = computeTextRasterBounds(item, width, height)
   const config: RasterizeTextConfig = {
-    canvasWidth: width,
-    canvasHeight: height,
+    canvasWidth: bounds.width,
+    canvasHeight: bounds.height,
     content: item.content,
     fontPath: item.fontPath,
     fontSize: item.fontSize,
     color: item.color,
-    x: String(item.x),
-    y: String(item.y),
+    x: String(bounds.refX - bounds.x),
+    y: String(bounds.refY - bounds.y),
     align: item.align ?? defaultTextAlign(item.x),
     verticalAlign: item.verticalAlign ?? defaultTextVerticalAlign(item.y),
     lineSpacing: item.lineSpacing ?? DEFAULT_LINE_SPACING,
