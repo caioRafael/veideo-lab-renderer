@@ -91,9 +91,12 @@ Contrato, tipos e defaults: [docs/api.md](docs/api.md). Sources: [docs/assets.md
 pnpm lint
 pnpm lint:fix
 pnpm test
+pnpm test:render
 pnpm typecheck
 pnpm build
 ```
+
+`pnpm test` é a suíte unitária (FFmpeg mockado). `pnpm test:render` gera duas imagens de fixture e renderiza um MP4 real em `tmp/smoke/video.mp4` — exige `ffmpeg` no PATH.
 
 O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier). Os testes unitários usam o runner nativo do Node (`node:test`) via `tsx`.
 
