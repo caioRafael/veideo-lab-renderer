@@ -1,22 +1,24 @@
-# Publicar no npm
+# Publishing to npm
 
-O pacote é publicado a partir do GitHub. Um **Release** na branch `main` dispara `.github/workflows/publish.yml`, que roda `prepublishOnly` (typecheck, testes e `pnpm build`) e envia `dist/`, `scripts/` e `assets/` ao npm.
+**English** | [Português](pt-BR/publishing.md)
 
-## Uma vez: conta e permissão
+The package is published from GitHub. A **Release** on the `main` branch triggers `.github/workflows/publish.yml`, which runs `prepublishOnly` (typecheck, tests, and `pnpm build`) and uploads `dist/`, `scripts/`, and `assets/` to npm.
 
-1. Crie uma conta em [npmjs.com](https://www.npmjs.com/signup) e ative 2FA.
-2. No GitHub do repositório, Settings → Secrets and variables → Actions, crie o secret **`NPM_TOKEN`** com um Access Token do npm (Automation), **ou** configure [Trusted Publisher](https://docs.npmjs.com/trusted-publishers) apontando para este repositório e o workflow `publish.yml`.
-3. O `package.json` já declara `publishConfig.access: public` e `provenance: true`. A Action tem `id-token: write` para o provenance.
+## One-time: account and permission
 
-O nome no registry é `@caiorafael/patchwork`:
+1. Create an account at [npmjs.com](https://www.npmjs.com/signup) and enable 2FA.
+2. In the GitHub repository, Settings → Secrets and variables → Actions, create the **`NPM_TOKEN`** secret with an npm granular access token (read and write, Bypass 2FA), **or** configure a [Trusted Publisher](https://docs.npmjs.com/trusted-publishers) pointing at this repository and the `publish.yml` workflow.
+3. `package.json` already declares `publishConfig.access: public` and `provenance: true`. The Action has `id-token: write` for provenance.
+
+The registry name is `@caiorafael/patchwork`:
 
 ```bash
 pnpm add @caiorafael/patchwork
 ```
 
-## Publicar uma versão
+## Publish a version
 
-1. Atualize `version` no `package.json` (semv):
+1. Bump `version` in `package.json` (semver):
 
 ```bash
 pnpm version patch   # 1.0.0 → 1.0.1
@@ -24,32 +26,32 @@ pnpm version minor   # 1.0.0 → 1.1.0
 pnpm version major   # 1.0.0 → 2.0.0
 ```
 
-`pnpm version` cria o commit e a tag `v1.0.1` (ajuste a mensagem se quiser Conventional Commits).
+`pnpm version` creates the commit and the `v1.0.1` tag (adjust the message if you want Conventional Commits).
 
-2. Envie a branch e a tag:
+2. Push the branch and the tag:
 
 ```bash
 git push origin main --follow-tags
 ```
 
-3. No GitHub: **Releases → Draft a new release**. Use a tag recém-enviada (`v1.0.1`), publique o release.
+3. On GitHub: **Releases → Draft a new release**. Use the tag you just pushed (`v1.0.1`) and publish the release.
 
-O workflow **Publish npm** sobe o pacote. Confira em [npmjs.com/package/@caiorafael/patchwork](https://www.npmjs.com/package/@caiorafael/patchwork).
+The **Publish npm** workflow uploads the package. Check [npmjs.com/package/@caiorafael/patchwork](https://www.npmjs.com/package/@caiorafael/patchwork).
 
-Publicação manual (mesma Action): **Actions → Publish npm → Run workflow**.
+Manual publish (same Action): **Actions → Publish npm → Run workflow**.
 
-## O que entra no tarball
+## What goes in the tarball
 
-| Incluído | Fora do pacote |
+| Included | Out of the package |
 |---|---|
-| `dist/` (JS + `.d.ts` + sourcemap) | `src/`, testes |
+| `dist/` (JS + `.d.ts` + sourcemap) | `src/`, tests |
 | `scripts/render-text.swift` | `examples/`, `compositions/` |
 | `assets/` | `docs/`, workflows |
-| `LICENSE`, `README.md` | `tmp/`, `node_modules/` |
+| `LICENSE`, `README.md`, `README.pt-BR.md` | `tmp/`, `node_modules/` |
 
-Consumidores Node/TypeScript importam o build em `dist/`. FFmpeg continua sendo dependência de **sistema**, não do npm.
+Node/TypeScript consumers import the build in `dist/`. FFmpeg remains a **system** dependency, not an npm dependency.
 
-## Conferir localmente antes do release
+## Check locally before a release
 
 ```bash
 pnpm lint
@@ -59,4 +61,4 @@ pnpm build
 pnpm publish --dry-run --no-git-checks
 ```
 
-`pnpm publish --dry-run` lista o que iria para o npm, sem publicar.
+`pnpm publish --dry-run` lists what would go to npm, without publishing.

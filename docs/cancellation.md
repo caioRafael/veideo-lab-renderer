@@ -1,6 +1,8 @@
-# Cancelamento
+# Cancellation
 
-A API pública aceita `AbortSignal` (`pnpm add @caiorafael/patchwork`):
+**English** | [Português](pt-BR/cancellation.md)
+
+The public API accepts `AbortSignal` (`pnpm add @caiorafael/patchwork`):
 
 ```ts
 import { render } from '@caiorafael/patchwork'
@@ -15,27 +17,27 @@ const job = render({
 })
 
 controller.abort()
-await job // rejeita com RenderCancelledError
+await job // rejects with RenderCancelledError
 ```
 
-## Comportamento
+## Behavior
 
 ```text
 abort
  ↓
-etapa atual verifica o sinal
+current step checks the signal
  ↓
-FFmpeg recebe SIGTERM (depois SIGKILL)
+FFmpeg receives SIGTERM (then SIGKILL)
  ↓
-staging `*.tmp.mp4` é removido
+staging `*.tmp.mp4` is removed
  ↓
-RenderContext é apagado (textos PNG e downloads de URL)
+RenderContext is deleted (PNG texts and URL downloads)
  ↓
 RenderCancelledError
 ```
 
-A aplicação consumidora decide quando abortar (timeout, botão, shutdown). O core não escuta SIGINT/SIGTERM.
+The consuming app decides when to abort (timeout, button, shutdown). The core does not listen for SIGINT/SIGTERM.
 
-## Limites
+## Limits
 
-- A rasterização Swift é interrompida entre textos (e no `spawn` atual, também via `AbortSignal` do processo).
+- Swift rasterization is interrupted between texts (and, in the current `spawn`, also via the process `AbortSignal`).

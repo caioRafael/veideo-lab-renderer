@@ -1,14 +1,16 @@
 # Patchwork
 
+**English** | [Português](README.pt-BR.md)
+
 [![npm version](https://img.shields.io/npm/v/@caiorafael/patchwork.svg)](https://www.npmjs.com/package/@caiorafael/patchwork)
 [![CI](https://github.com/caioRafael/veideo-lab-renderer/actions/workflows/ci.yml/badge.svg)](https://github.com/caioRafael/veideo-lab-renderer/actions/workflows/ci.yml)
 
-Biblioteca Node.js/TypeScript para **compor e renderizar vídeos** com FFmpeg.
+Node.js/TypeScript library for **composing and rendering videos** with FFmpeg.
 
-A aplicação consumidora constrói uma `Composition` em memória e passa os assets. O Patchwork parseia, valida, monta o pipeline e gera o MP4. Ele não conhece CLI, HTTP, templates, factory, editor ou banco.
+The consuming app builds a `Composition` in memory and passes the assets. Patchwork parses, validates, builds the pipeline, and writes the MP4. It does not know about CLI, HTTP, templates, factory, editor, or a database.
 
 ```text
-Aplicação externa
+External application
        │
        │ Composition + Assets
        ▼
@@ -20,41 +22,41 @@ Aplicação externa
            ▼
          FFmpeg
            ▼
-      Vídeo final
+      Final video
 ```
 
-## Requisitos
+## Requirements
 
 - Node.js 20+
-- FFmpeg no PATH
-- Para `drawtext` nativo: FFmpeg com libfreetype. Sem isso, o engine rasteriza o texto em PNG e aplica como overlay.
+- FFmpeg on PATH
+- For native `drawtext`: FFmpeg built with libfreetype. Without it, the engine rasterizes text to PNG and applies it as an overlay.
 
-## Instalação
+## Installation
 
 ```bash
 pnpm add @caiorafael/patchwork
 ```
 
-Também funciona com `npm install @caiorafael/patchwork`.
+`npm install @caiorafael/patchwork` also works.
 
-FFmpeg é dependência do **sistema**, não do pacote:
+FFmpeg is a **system** dependency, not a package dependency:
 
 ```bash
 brew install ffmpeg
 ```
 
-Desenvolvimento local deste repositório:
+Local development of this repository:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-O pacote publicado expõe `dist/`. Consumo via `file:` (playground) precisa do `pnpm build` neste repo. Publicar no npm: [docs/publishing.md](docs/publishing.md).
+The published package exposes `dist/`. Consuming via `file:` (playground) needs `pnpm build` in this repo. Publishing to npm: [docs/publishing.md](docs/publishing.md).
 
-Contrato completo da API: [docs/api.md](docs/api.md).
+Full API contract: [docs/api.md](docs/api.md).
 
-## Uso
+## Usage
 
 ```ts
 import { render } from '@caiorafael/patchwork'
@@ -83,9 +85,9 @@ const result = await render({
 console.log(result.outputPath, result.duration)
 ```
 
-`composition` é o objeto JSON da composição — não um arquivo. `assets` mapeia identificadores lógicos para caminhos no disco. `output` é o caminho do MP4 (`string` ou `{ path }`).
+`composition` is the composition JSON object — not a file. `assets` maps logical ids to disk paths. `output` is the MP4 path (`string` or `{ path }`).
 
-Opcional: `fonts`, `signal` (`AbortSignal`) e `onProgress`.
+Optional: `fonts`, `signal` (`AbortSignal`), and `onProgress`.
 
 ```ts
 import { parseComposition } from '@caiorafael/patchwork'
@@ -93,11 +95,11 @@ import { parseComposition } from '@caiorafael/patchwork'
 const composition = parseComposition(rawObject)
 ```
 
-O resultado traz `outputPath`, `duration` e `metrics` (tempo, render factor, tamanho, contagens). Em erro, `render` lança.
+The result includes `outputPath`, `duration`, and `metrics` (time, render factor, size, counts). On error, `render` throws.
 
-Contrato, tipos e defaults: [docs/api.md](docs/api.md). Sources: [docs/assets.md](docs/assets.md).
+Contract, types, and defaults: [docs/api.md](docs/api.md). Sources: [docs/assets.md](docs/assets.md).
 
-## Lint e testes
+## Lint and tests
 
 ```bash
 pnpm lint
@@ -108,13 +110,13 @@ pnpm typecheck
 pnpm build
 ```
 
-`pnpm test` é a suíte unitária (FFmpeg mockado). `pnpm test:render` gera duas imagens de fixture e renderiza um MP4 real em `tmp/smoke/video.mp4` — exige `ffmpeg` no PATH.
+`pnpm test` is the unit suite (FFmpeg mocked). `pnpm test:render` generates two fixture images and renders a real MP4 at `tmp/smoke/video.mp4` — requires `ffmpeg` on PATH.
 
-O projeto usa ESLint com `@rocketseat/eslint-config/node` (inclui Prettier). Os testes unitários usam o runner nativo do Node (`node:test`) via `tsx`.
+The project uses ESLint with `@rocketseat/eslint-config/node` (includes Prettier). Unit tests use Node's native runner (`node:test`) via `tsx`.
 
-## Composição JSON
+## Composition JSON
 
-Exemplo mínimo:
+Minimal example:
 
 ```json
 {
@@ -138,51 +140,51 @@ Exemplo mínimo:
 
 ### Sources
 
-O campo `source` (cenas, áudios e overlays) aceita uma **string** ou um **objeto**.
+The `source` field (scenes, audio, and overlays) accepts a **string** or an **object**.
 
-| `source` | Origem | O que acontece |
+| `source` | Origin | What happens |
 |---|---|---|
-| `"background"` | mapa `assets` | resolve `assets.background` para um caminho local |
-| `{ "type": "asset", "id": "background" }` | mapa `assets` | o mesmo, de forma explícita |
-| `{ "type": "file", "path": "/…" }` | arquivo local | usa o arquivo no lugar; não copia |
-| `{ "type": "url", "url": "https://…" }` | HTTP/HTTPS | baixa para o temp do render e apaga depois |
+| `"background"` | `assets` map | resolves `assets.background` to a local path |
+| `{ "type": "asset", "id": "background" }` | `assets` map | the same, explicit |
+| `{ "type": "file", "path": "/…" }` | local file | uses the file in place; does not copy |
+| `{ "type": "url", "url": "https://…" }` | HTTP/HTTPS | downloads into the render temp dir and deletes it afterwards |
 
-Uma string que não está em `assets` e não é um caminho absoluto falha. O core não procura pastas `input/` do repositório. Fontes vêm do sistema, de `assets/fonts` do pacote ou do diretório passado em `fonts`. O caminho do MP4 vem de `output` na API.
+A string that is not in `assets` and is not an absolute path fails. The core does not look in repository `input/` folders. Fonts come from the system, from the package `assets/fonts`, or from the directory passed in `fonts`. The MP4 path comes from `output` on the API.
 
-Detalhes: [docs/assets.md](docs/assets.md).
+Details: [docs/assets.md](docs/assets.md).
 
-Defaults aplicados pelo parser quando o campo não vem no JSON:
+Defaults applied by the parser when the field is missing from the JSON:
 
-| Campo | Default |
+| Field | Default |
 |---|---|
-| `output` | `output.mp4` (a API `render({ output })` substitui este valor) |
-| `width` | `1920` (inteiro par) |
-| `height` | `1080` (inteiro par) |
+| `output` | `output.mp4` (the `render({ output })` API replaces this value) |
+| `width` | `1920` (even integer) |
+| `height` | `1080` (even integer) |
 | `fps` | `25` |
 | `texts[].start` | `0` |
 | `texts[].x` / `y` | `center` |
 | `texts[].fontSize` | `48` |
 | `texts[].color` | `#FFFFFF` |
 
-### Cenas (`scenes`)
+### Scenes
 
-| Campo | Descrição |
+| Field | Description |
 |---|---|
-| `type` | `image` ou `video` |
-| `source` | id em `assets`, caminho absoluto, ou objeto `file` / `asset` / `url` |
-| `duration` | duração da cena na timeline global, em segundos |
-| `mediaStart` | (vídeo) offset no arquivo de origem, em segundos. Default `0`. Inválido em `image` |
-| `shortMedia` | (vídeo) o que fazer se a mídia disponível for menor que a cena: `error` (default), `loop` ou `freeze`. Inválido em `image` |
-| `audio` | (opcional) áudios extras da cena |
-| `keepAudio` | (vídeo) mantém o áudio original do arquivo |
-| `transition` | transição **a partir da cena anterior** (`fade` ou `crossfade`) |
-| `transform` | transformação visual da mídia da cena (estática ou animada) |
-| `effects` | efeitos visuais estáticos da mídia da cena (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) |
+| `type` | `image` or `video` |
+| `source` | id in `assets`, absolute path, or `file` / `asset` / `url` object |
+| `duration` | scene duration on the global timeline, in seconds |
+| `mediaStart` | (video) offset in the source file, in seconds. Default `0`. Invalid on `image` |
+| `shortMedia` | (video) what to do if available media is shorter than the scene: `error` (default), `loop`, or `freeze`. Invalid on `image` |
+| `audio` | (optional) extra scene audio |
+| `keepAudio` | (video) keeps the file's original audio |
+| `transition` | transition **from the previous scene** (`fade` or `crossfade`) |
+| `transform` | visual transform of the scene media (static or animated) |
+| `effects` | static visual effects on the scene media (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) |
 
-A posição da cena na composição (`scenePlacements`) é independente do ponto de leitura do arquivo:
+The scene position in the composition (`scenePlacements`) is independent of the file read point:
 
 ```text
-Timeline da composição  ≠  Timeline da mídia
+Composition timeline  ≠  Media timeline
 ```
 
 ```json
@@ -194,23 +196,23 @@ Timeline da composição  ≠  Timeline da mídia
 }
 ```
 
-A cena ocupa 5s na timeline global e lê `media[20s → 25s)`. `mediaStart` não move a cena, não altera o total da composição e não muda o tempo da animação nem da transição.
+The scene occupies 5s on the global timeline and reads `media[20s → 25s)`. `mediaStart` does not move the scene, does not change the composition total, and does not change animation or transition timing.
 
-Se a mídia restante for menor que `duration`:
+If remaining media is shorter than `duration`:
 
-| `shortMedia` | Comportamento |
+| `shortMedia` | Behavior |
 |---|---|
-| `error` (default) | o engine rejeita antes do FFmpeg, com source, mediaStart, duração pedida e disponível |
-| `loop` | o trecho `[mediaStart, EOF)` se repete **dentro** da cena |
-| `freeze` | o último frame permanece até o fim da cena |
+| `error` (default) | the engine rejects before FFmpeg, with source, mediaStart, requested and available duration |
+| `loop` | the `[mediaStart, EOF)` segment repeats **inside** the scene |
+| `freeze` | the last frame holds until the end of the scene |
 
-Uma composition antiga sem esses campos continua significando `mediaStart = 0` e `shortMedia = error`. `keepAudio` e áudio de cena seguem a timeline da cena; `mediaStart` não atrasa o áudio.
+An older composition without these fields still means `mediaStart = 0` and `shortMedia = error`. `keepAudio` and scene audio follow the scene timeline; `mediaStart` does not delay audio.
 
-### Transformações
+### Transforms
 
-`transform` descreve a intenção visual da mídia da cena. Não afeta áudio, texto nem overlay. `crop` é sempre estático. `scale`, `zoom`, `x`/`y` e `pan` aceitam um número (estático) ou `{ from, to }` (animação ao longo da duração da cena). O campo opcional `easing` altera só a progressão entre `from` e `to`. Sem `easing`, a interpolação é `linear`. Não há keyframes.
+`transform` describes the visual intent of the scene media. It does not affect audio, text, or overlays. `crop` is always static. `scale`, `zoom`, `x`/`y`, and `pan` accept a number (static) or `{ from, to }` (animation over the scene duration). Optional `easing` only changes the progression from `from` to `to`. Without `easing`, interpolation is `linear`. There are no keyframes.
 
-Estático:
+Static:
 
 ```json
 {
@@ -222,7 +224,7 @@ Estático:
 }
 ```
 
-Animado (Ken Burns):
+Animated (Ken Burns):
 
 ```json
 {
@@ -237,60 +239,60 @@ Animado (Ken Burns):
 }
 ```
 
-A animação começa em `from`, termina em `to` e ocupa a duração da cena. `t` é limitado a `[0, duration]`. Depois o easing remapeia esse `t` normalizado:
+The animation starts at `from`, ends at `to`, and occupies the scene duration. `t` is clamped to `[0, duration]`. Then easing remaps that normalized `t`:
 
-| `easing` | Curva | Comportamento |
+| `easing` | Curve | Behavior |
 |---|---|---|
-| `linear` (default) | `t` | velocidade constante |
-| `ease-in` | `t²` | começa devagar, termina rápido |
-| `ease-out` | `1 - (1 - t)²` | começa rápido, termina devagar |
-| `ease-in-out` | quadrática por partes | devagar → rápido → devagar |
+| `linear` (default) | `t` | constant speed |
+| `ease-in` | `t²` | starts slow, ends fast |
+| `ease-out` | `1 - (1 - t)²` | starts fast, ends slow |
+| `ease-in-out` | piecewise quadratic | slow → fast → slow |
 
-Cada campo animado tem a própria curva. `x` e `y` são independentes. No `pan` `{ from, to }`, um `easing` vale para os dois eixos.
+Each animated field has its own curve. `x` and `y` are independent. On `pan` `{ from, to }`, one `easing` applies to both axes.
 
 ```text
 value(t) = from + (to - from) * easing(t_norm)
 ```
 
-| Campo | Semântica |
+| Field | Semantics |
 |---|---|
-| `scale` | multiplicador de tamanho. `1` = tamanho após o fit no canvas. Número ou `{ from, to, easing? }` (`from`/`to` > 0) |
-| `zoom` | o mesmo multiplicador que `scale`. Se os dois existirem: `scale(t) * zoom(t)` em cada instante |
-| `x` / `y` | deslocamento em pixels **a partir do centro do canvas**. Número ou `{ from, to, easing? }`. `x > 0` direita, `y > 0` baixo |
-| `pan` | o mesmo deslocamento que `x`/`y`. Estático: `{ x, y }`. Animado: `{ from: { x, y }, to: { x, y }, easing? }`. Se coexistir com `x`/`y`, os valores **somam** |
-| `crop` | recorte **estático** em pixels da mídia de origem |
+| `scale` | size multiplier. `1` = size after canvas fit. Number or `{ from, to, easing? }` (`from`/`to` > 0) |
+| `zoom` | the same multiplier as `scale`. If both exist: `scale(t) * zoom(t)` at each instant |
+| `x` / `y` | offset in pixels **from the canvas center**. Number or `{ from, to, easing? }`. `x > 0` right, `y > 0` down |
+| `pan` | the same offset as `x`/`y`. Static: `{ x, y }`. Animated: `{ from: { x, y }, to: { x, y }, easing? }`. If it coexists with `x`/`y`, the values **add** |
+| `crop` | **static** crop in pixels of the source media |
 
-`zoom` ≡ `scale` e `pan` ≡ `x`/`y`. A interpolação de `scale * zoom` é o produto das duas curvas, não o lerp do produto. `position + pan` somam depois de cada um aplicar o próprio easing.
+`zoom` ≡ `scale` and `pan` ≡ `x`/`y`. Interpolation of `scale * zoom` is the product of the two curves, not a lerp of the product. `position + pan` add after each one applies its own easing.
 
-Ordem aplicada:
+Applied order:
 
 ```text
 input
  ↓
-crop          (estático; pixels da mídia)
+crop          (static; media pixels)
  ↓
 canvas fit
  ↓
-scale / zoom  (estático ou animado)
+scale / zoom  (static or animated)
  ↓
-position / pan  (estático ou animado; overlay no canvas)
+position / pan  (static or animated; overlay on the canvas)
  ↓
 setsar + fps + format=yuv420p
  ↓
-effects      (estáticos; só a mídia da cena)
+effects      (static; scene media only)
  ↓
 transition
 ```
 
-Exemplos estáticos: `compositions/transform-scale.json`, `transform-position.json`, `transform-crop.json`, `transform-combined.json`, `transform-video.json`, `transform-with-crossfade.json`.
+Static examples: `compositions/transform-scale.json`, `transform-position.json`, `transform-crop.json`, `transform-combined.json`, `transform-video.json`, `transform-with-crossfade.json`.
 
-Exemplos animados: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`, `animated-with-fade.json`.
+Animated examples: `compositions/animated-scale.json`, `animated-pan.json`, `animated-position.json`, `animated-zoom.json`, `ken-burns.json`, `animated-video.json`, `animated-with-crossfade.json`, `animated-with-fade.json`.
 
-Exemplos de easing: `compositions/easing-linear.json`, `easing-in.json`, `easing-out.json`, `easing-in-out.json`, `easing-ken-burns.json`.
+Easing examples: `compositions/easing-linear.json`, `easing-in.json`, `easing-out.json`, `easing-in-out.json`, `easing-ken-burns.json`.
 
-### Efeitos
+### Effects
 
-`effects` descreve ajustes visuais **estáticos** da mídia da cena. Não afeta áudio, texto nem overlay independente. Não há `from`/`to`, keyframes nem easing nesta fase. A ordem das chaves no JSON é ignorada.
+`effects` describes **static** visual adjustments of the scene media. It does not affect audio, text, or independent overlays. There is no `from`/`to`, keyframes, or easing in this phase. JSON key order is ignored.
 
 ```json
 {
@@ -306,49 +308,49 @@ Exemplos de easing: `compositions/easing-linear.json`, `easing-in.json`, `easing
 }
 ```
 
-Sem `effects`, ou com `effects: {}`, o comportamento é o mesmo de antes. Defaults não geram filtro.
+Without `effects`, or with `effects: {}`, behavior matches the previous version. Defaults do not emit a filter.
 
-| Campo | Default | Limite | Semântica |
+| Field | Default | Range | Semantics |
 |---|---|---|---|
-| `opacity` | `1` | `[0, 1]` | `1` = opaco. `0` = transparente (mistura a cena com o canvas preto) |
-| `brightness` | `0` | `[-1, 1]` | `0` = original. `> 0` mais clara. `< 0` mais escura |
-| `contrast` | `1` | `[0, 4]` | `1` = original. `> 1` mais contraste. `0` imagem achatada |
-| `saturation` | `1` | `[0, 3]` | `1` = original. `0` = cinza. `> 1` mais saturada |
-| `grayscale` | `0` | `[0, 1]` | `0` = original. `1` = cinza Rec.601. `0.5` = 50% |
-| `sepia` | `0` | `[0, 1]` | `0` = original. `1` = sepia máximo da matriz simples |
-| `blur` | `0` | `[0, 64]` | raio em pixels (`boxblur`, um passe) |
+| `opacity` | `1` | `[0, 1]` | `1` = opaque. `0` = transparent (mixes the scene with the black canvas) |
+| `brightness` | `0` | `[-1, 1]` | `0` = original. `> 0` brighter. `< 0` darker |
+| `contrast` | `1` | `[0, 4]` | `1` = original. `> 1` more contrast. `0` flattened image |
+| `saturation` | `1` | `[0, 3]` | `1` = original. `0` = gray. `> 1` more saturated |
+| `grayscale` | `0` | `[0, 1]` | `0` = original. `1` = Rec.601 gray. `0.5` = 50% |
+| `sepia` | `0` | `[0, 1]` | `0` = original. `1` = full simple-matrix sepia |
+| `blur` | `0` | `[0, 64]` | radius in pixels (`boxblur`, one pass) |
 
-Efeito desconhecido (`vignette`, `glow`, …) é rejeitado. Valores animados (`{ from, to }`), `NaN`, `Infinity`, strings e objetos inválidos também.
+Unknown effects (`vignette`, `glow`, …) are rejected. Animated values (`{ from, to }`), `NaN`, `Infinity`, strings, and invalid objects are rejected too.
 
-Ordem canônica (independente do JSON):
+Canonical order (independent of JSON):
 
 ```text
 opacity → brightness → contrast → saturation → grayscale → sepia → blur
 ```
 
-Effects entram **depois** de crop / fit / transform e **antes** da transição. Cada cena chega no `fade`/`crossfade` já com os próprios efeitos. `mediaStart`, `shortMedia`, `scenePlacements` e a duração da animação não mudam.
+Effects enter **after** crop / fit / transform and **before** the transition. Each scene reaches `fade`/`crossfade` already with its own effects. `mediaStart`, `shortMedia`, `scenePlacements`, and animation duration do not change.
 
-O parser valida. O RenderPlan guarda a intenção (`VideoItem.effects`). O `EffectFilter` traduz para FFmpeg.
+The parser validates. RenderPlan stores the intent (`VideoItem.effects`). `EffectFilter` translates it to FFmpeg.
 
-Exemplos: `compositions/effect-opacity.json`, `effect-brightness.json`, `effect-contrast.json`, `effect-saturation.json`, `effect-grayscale.json`, `effect-sepia.json`, `effect-blur.json`, `effects-combined.json`, `effects-transform.json`, `effects-crossfade.json`, `effects-media-timing.json`.
+Examples: `compositions/effect-opacity.json`, `effect-brightness.json`, `effect-contrast.json`, `effect-saturation.json`, `effect-grayscale.json`, `effect-sepia.json`, `effect-blur.json`, `effects-combined.json`, `effects-transform.json`, `effects-crossfade.json`, `effects-media-timing.json`.
 
-### Áudio
+### Audio
 
-Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
+Audio can be **global** (`audio` at the root) or **per scene** (`scenes[].audio`).
 
-| Campo | Descrição |
+| Field | Description |
 |---|---|
-| `source` | id em `assets`, caminho absoluto, ou objeto `file` / `asset` / `url` |
-| `role` | `background` (vol. 0.3) ou `focus` (vol. 1.0) |
-| `start` | início na timeline (absoluto no global; relativo ao **início visual** da cena no local, inclusive no overlap do crossfade) |
-| `duration` | (opcional) duração do trecho |
-| `volume` | (opcional) sobrescreve o volume do `role` |
+| `source` | id in `assets`, absolute path, or `file` / `asset` / `url` object |
+| `role` | `background` (vol. 0.3) or `focus` (vol. 1.0) |
+| `start` | start on the timeline (absolute when global; relative to the scene **visual start** when local, including crossfade overlap) |
+| `duration` | (optional) clip duration |
+| `volume` | (optional) overrides the `role` volume |
 
-### Textos e overlays
+### Texts and overlays
 
-Textos e overlays entram no `RenderPlan` como tracks próprias e são desenhados no MP4. O timing (`start` / `duration`) é absoluto na timeline da composição — não segue `mediaStart` nem transições.
+Texts and overlays enter `RenderPlan` as their own tracks and are drawn into the MP4. Timing (`start` / `duration`) is absolute on the composition timeline — it does not follow `mediaStart` or transitions.
 
-O JSON antigo continua válido:
+The older JSON remains valid:
 
 ```json
 {
@@ -368,11 +370,11 @@ O JSON antigo continua válido:
 }
 ```
 
-Campos novos são opcionais. `style` e `position` são aliases que o parser achata nos campos da clip:
+New fields are optional. `style` and `position` are aliases that the parser flattens onto the clip fields:
 
 ```json
 {
-  "content": "Linha 1\nLinha 2",
+  "content": "Line 1\nLine 2",
   "start": 1,
   "duration": 6,
   "position": { "x": "center", "y": "center" },
@@ -391,35 +393,35 @@ Campos novos são opcionais. `style` e `position` são aliases que o parser acha
 }
 ```
 
-`x` / `y` (ou `position`) são o **ponto de referência da caixa de texto**, não necessariamente o canto superior esquerdo.
+`x` / `y` (or `position`) are the **text-box reference point**, not necessarily the top-left corner.
 
-| `align` | A caixa encosta nesse ponto em X |
+| `align` | The box sits on this point on X |
 |---|---|
-| `left` (default se `x` é número) | borda esquerda |
-| `center` (default se `x` é `"center"`) | centro |
-| `right` | borda direita |
+| `left` (default if `x` is a number) | left edge |
+| `center` (default if `x` is `"center"`) | center |
+| `right` | right edge |
 
-| `verticalAlign` | A caixa encosta nesse ponto em Y |
+| `verticalAlign` | The box sits on this point on Y |
 |---|---|
-| `top` (default se `y` é número) | topo |
-| `middle` (default se `y` é `"center"`) | meio |
-| `bottom` | base |
+| `top` (default if `y` is a number) | top |
+| `middle` (default if `y` is `"center"`) | middle |
+| `bottom` | bottom |
 
-`lineSpacing` é **multiplicador** da altura da linha (`fontSize × lineSpacing`). Default `1` preserva o texto antigo. `box.width` é a largura máxima; o wrapping é feito no Node, de forma determinística, antes do FFmpeg. `\\n` no `content` vira quebra explícita. O fundo envolve o texto real (+ padding), não o canvas.
+`lineSpacing` is a **multiplier** of line height (`fontSize × lineSpacing`). Default `1` preserves older text. `box.width` is the max width; wrapping is done in Node, deterministically, before FFmpeg. `\\n` in `content` becomes an explicit break. The background wraps the real text (+ padding), not the canvas.
 
-Sem `drawtext` no FFmpeg, o `Renderer` rasteriza cada texto em PNG (Swift) com os mesmos estilos e trata como overlay.
+Without `drawtext` in FFmpeg, `Renderer` rasterizes each text to PNG (Swift) with the same styles and treats it as an overlay.
 
-| Campo | Descrição |
+| Field | Description |
 |---|---|
-| `overlays[].source` | id em `assets`, caminho absoluto, ou objeto `file` / `asset` / `url` |
-| `overlays[].start` / `duration` | posição absoluta na timeline |
-| `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
+| `overlays[].source` | id in `assets`, absolute path, or `file` / `asset` / `url` object |
+| `overlays[].start` / `duration` | absolute position on the timeline |
+| `overlays[].x` / `y` / `width` / `height` | overlay box |
 
-Camadas, de baixo para cima: vídeo → overlays de imagem → texto.
+Layers, bottom to top: video → image overlays → text.
 
-### Transições
+### Transitions
 
-A transição é declarada na **cena de destino** e descreve o corte entre a cena anterior e ela.
+The transition is declared on the **destination scene** and describes the cut between the previous scene and this one.
 
 ```json
 {
@@ -435,102 +437,102 @@ A transição é declarada na **cena de destino** e descreve o corte entre a cen
 }
 ```
 
-- `fade` — a cena anterior some para preto e a próxima nasce do preto (`A → black → B`). As cenas não se sobrepõem; a duração total continua a soma das cenas.
-- `crossfade` — as duas cenas se misturam. Com 5s + 5s e 1s de crossfade, o MP4 dura **9s** (`B.start = 4`).
+- `fade` — the previous scene fades to black and the next one fades in from black (`A → black → B`). Scenes do not overlap; total duration stays the sum of the scenes.
+- `crossfade` — the two scenes mix. With 5s + 5s and a 1s crossfade, the MP4 lasts **9s** (`B.start = 4`).
 
-| JSON | Semântica | Duração final (5s + 5s, T=1s) | FFmpeg |
+| JSON | Semantics | Final duration (5s + 5s, T=1s) | FFmpeg |
 |---|---|---|---|
-| `fade` | A → preto → B | 10s | `fade=t=out` + `fade=t=in` + `concat` |
-| `crossfade` | mistura A e B | 9s | `settb=AVTB` + `xfade` |
+| `fade` | A → black → B | 10s | `fade=t=out` + `fade=t=in` + `concat` |
+| `crossfade` | mix A and B | 9s | `settb=AVTB` + `xfade` |
 
-A primeira cena não pode ter `transition`. A duração tem que ser **estritamente menor** que as duas cenas adjacentes. Só o Video Track é afetado; texto e overlay seguem a própria timeline absoluta. Áudio de cena e `keepAudio` usam o **início visual** da cena (no crossfade, entram no overlap).
+The first scene cannot have `transition`. Duration must be **strictly smaller** than both adjacent scenes. Only the Video Track is affected; text and overlays follow their own absolute timeline. Scene audio and `keepAudio` use the scene **visual start** (on crossfade, they enter during the overlap).
 
-A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan guarda `incomingTransition` (`type` + `duration`), sem sintaxe FFmpeg. Detalhes do filter graph: [ffmpeg-guide.md](ffmpeg-guide.md).
+Translation to filters happens only in `FfmpegCommandBuilder`. RenderPlan stores `incomingTransition` (`type` + `duration`), with no FFmpeg syntax. Filter graph details: [ffmpeg-guide.md](ffmpeg-guide.md).
 
-### Exemplos prontos
+### Ready-made examples
 
-Os arquivos em `compositions/` são o schema da composition. As strings de `source` (`"flamengo.png"`, `"audio.mp3"`, …) são **ids de asset**. Para renderizar um deles, passe o objeto parseado e o mapa `assets` com o caminho real de cada id.
+Files in `compositions/` are the composition schema. `source` strings (`"flamengo.png"`, `"audio.mp3"`, …) are **asset ids**. To render one of them, pass the parsed object and an `assets` map with the real path for each id.
 
-- `compositions/example.json` — áudios globais na timeline
-- `compositions/scenes-with-audio.json` — áudio dentro de cada cena
-- `compositions/background-and-scene-audio.json` — background global + focus na cena
-- `compositions/texts.json` — títulos e legendas nas cenas
-- `compositions/overlay.json` — imagem sobreposta em posições diferentes
-- `compositions/text-and-overlay.json` — texto + overlay juntos
-- `compositions/full-timeline.json` — cenas, áudio, texto e overlay
-- `compositions/video-and-photos.json` — foto, clipe de vídeo e foto, com áudio e textos
-- `compositions/video-timeline.json` — vídeo, fotos, áudio global/cena, texto e overlay
-- `compositions/video-photos.json` — fotos e vídeo, com o áudio original do clipe
-- `compositions/fade.json` — foto → preto → foto
-- `compositions/crossfade.json` — dissolução de 1s entre duas fotos
-- `compositions/crossfade-image-video.json` — foto → clipe de vídeo
-- `compositions/transform-scale.json` — foto ampliada (scale 1.4)
-- `compositions/transform-position.json` — foto deslocada no canvas
-- `compositions/transform-crop.json` — recorte da mídia original
+- `compositions/example.json` — global audio on the timeline
+- `compositions/scenes-with-audio.json` — audio inside each scene
+- `compositions/background-and-scene-audio.json` — global background + scene focus
+- `compositions/texts.json` — titles and captions on scenes
+- `compositions/overlay.json` — overlaid image in different positions
+- `compositions/text-and-overlay.json` — text + overlay together
+- `compositions/full-timeline.json` — scenes, audio, text, and overlay
+- `compositions/video-and-photos.json` — photo, video clip, and photo, with audio and texts
+- `compositions/video-timeline.json` — video, photos, global/scene audio, text, and overlay
+- `compositions/video-photos.json` — photos and video, with the clip's original audio
+- `compositions/fade.json` — photo → black → photo
+- `compositions/crossfade.json` — 1s dissolve between two photos
+- `compositions/crossfade-image-video.json` — photo → video clip
+- `compositions/transform-scale.json` — enlarged photo (scale 1.4)
+- `compositions/transform-position.json` — photo offset on the canvas
+- `compositions/transform-crop.json` — crop of the source media
 - `compositions/transform-combined.json` — crop + scale + position
-- `compositions/transform-video.json` — clipe com crop, scale, pan e áudio original
+- `compositions/transform-video.json` — clip with crop, scale, pan, and original audio
 - `compositions/transform-with-crossfade.json` — transform + crossfade
 - `compositions/animated-scale.json` — scale 1 → 1.2
-- `compositions/animated-pan.json` — pan da esquerda para a direita
-- `compositions/animated-position.json` — x/y animados
+- `compositions/animated-pan.json` — pan left to right
+- `compositions/animated-position.json` — animated x/y
 - `compositions/animated-zoom.json` — zoom 1 → 1.2
-- `compositions/ken-burns.json` — scale + pan simultâneos, com áudio
-- `compositions/animated-video.json` — clipe com scale/pan animados
-- `compositions/animated-with-crossfade.json` — transform animado + crossfade
-- `compositions/animated-with-fade.json` — transform animado + fade
-- `compositions/easing-linear.json` — scale 1 → 1.5, velocidade constante
-- `compositions/easing-in.json` — scale 1 → 1.5, começa devagar
-- `compositions/easing-out.json` — scale 1 → 1.5, termina devagar
-- `compositions/easing-in-out.json` — scale 1 → 1.5, aceleração no meio
+- `compositions/ken-burns.json` — simultaneous scale + pan, with audio
+- `compositions/animated-video.json` — clip with animated scale/pan
+- `compositions/animated-with-crossfade.json` — animated transform + crossfade
+- `compositions/animated-with-fade.json` — animated transform + fade
+- `compositions/easing-linear.json` — scale 1 → 1.5, constant speed
+- `compositions/easing-in.json` — scale 1 → 1.5, starts slow
+- `compositions/easing-out.json` — scale 1 → 1.5, ends slow
+- `compositions/easing-in-out.json` — scale 1 → 1.5, acceleration in the middle
 - `compositions/easing-ken-burns.json` — scale ease-in-out + pan ease-out
-- `compositions/media-trim.json` — lê 5s a partir de `mediaStart: 20`
-- `compositions/media-offset.json` — começa o arquivo em 45s
-- `compositions/media-loop.json` — mídia curta repetida dentro da cena
-- `compositions/media-freeze.json` — último frame até o fim da cena
-- `compositions/media-trim-crossfade.json` — `mediaStart` em B sem mover o crossfade
-- `compositions/media-trim-animated.json` — trim + scale/x animados na duração da cena
-- `compositions/text-basic.json` — texto antigo (x/y/fontSize)
-- `compositions/text-multiline.json` — quebras explícitas
-- `compositions/text-wrapping.json` — `box.width` com wrap automático
-- `compositions/text-alignment.json` — left/center/right e top/middle/bottom
-- `compositions/text-background.json` — fundo + padding
-- `compositions/text-stroke.json` — contorno
-- `compositions/text-shadow.json` — sombra (sem blur)
+- `compositions/media-trim.json` — reads 5s from `mediaStart: 20`
+- `compositions/media-offset.json` — starts the file at 45s
+- `compositions/media-loop.json` — short media repeated inside the scene
+- `compositions/media-freeze.json` — last frame until the end of the scene
+- `compositions/media-trim-crossfade.json` — `mediaStart` on B without moving the crossfade
+- `compositions/media-trim-animated.json` — trim + animated scale/x over the scene duration
+- `compositions/text-basic.json` — older text (x/y/fontSize)
+- `compositions/text-multiline.json` — explicit line breaks
+- `compositions/text-wrapping.json` — `box.width` with automatic wrap
+- `compositions/text-alignment.json` — left/center/right and top/middle/bottom
+- `compositions/text-background.json` — background + padding
+- `compositions/text-stroke.json` — stroke
+- `compositions/text-shadow.json` — shadow (no blur)
 - `compositions/text-styled.json` — `style` + `position`
-- `compositions/text-multiple.json` — título, subtítulo, legenda e watermark
-- `compositions/text-full.json` — wrap, alinhamento, fundo, stroke e sombra
-- `compositions/effect-opacity.json` — opacidade 0.6 (mistura com o canvas preto)
-- `compositions/effect-brightness.json` — cena mais clara
-- `compositions/effect-contrast.json` — contraste 1.4
-- `compositions/effect-saturation.json` — saturação reduzida
-- `compositions/effect-grayscale.json` — cinza completo
+- `compositions/text-multiple.json` — title, subtitle, caption, and watermark
+- `compositions/text-full.json` — wrap, alignment, background, stroke, and shadow
+- `compositions/effect-opacity.json` — opacity 0.6 (mixes with the black canvas)
+- `compositions/effect-brightness.json` — brighter scene
+- `compositions/effect-contrast.json` — contrast 1.4
+- `compositions/effect-saturation.json` — reduced saturation
+- `compositions/effect-grayscale.json` — full gray
 - `compositions/effect-sepia.json` — sepia 0.85
-- `compositions/effect-blur.json` — blur de 4px
-- `compositions/effects-combined.json` — os sete efeitos juntos
-- `compositions/effects-transform.json` — scale/pan animados + brightness/contrast/saturation
-- `compositions/effects-crossfade.json` — A escura + B clara, crossfade 1s (total 9s)
+- `compositions/effect-blur.json` — 4px blur
+- `compositions/effects-combined.json` — all seven effects together
+- `compositions/effects-transform.json` — animated scale/pan + brightness/contrast/saturation
+- `compositions/effects-crossfade.json` — dark A + bright B, 1s crossfade (total 9s)
 - `compositions/effects-media-timing.json` — mediaStart 30 + freeze + effects
-- `compositions/joao-e-maria.json` — dois assets + áudio
+- `compositions/joao-e-maria.json` — two assets + audio
 
-## Limitações conhecidas
+## Known limitations
 
-- Não há keyframes: cada campo animado tem só `from` → `to` e uma curva (`linear`, `ease-in`, `ease-out`, `ease-in-out`).
-- O último frame da animação cai em `t ≈ duration - 1/fps`, não exatamente em `t = duration`. A expressão FFmpeg chega em `to` quando `t = duration`.
-- `crop` não é conferido contra a resolução real do arquivo (o probe lê só a duração).
-- `mediaStart` além do fim do arquivo e `shortMedia: error` com mídia curta são validados com `ffprobe` da duração do container. Sem duração legível, o render falha com mensagem clara.
-- Inputs de imagem usam o framerate padrão do demuxer `image2` (25). Composições com `fps` diferente dependem do filtro `fps` na normalização.
-- Fade visual não insere um segmento extra de preto: 5s + 5s com fade de 1s continua durando **10s**.
-- Áudio não faz crossfade; no overlap visual, `keepAudio` e áudio de cena podem se misturar no `amix`.
-- `keepAudio` e áudio de cena não herdam `mediaStart` do vídeo.
-- Sombra de texto não tem blur (`shadow.blur` só aceita `0`). Fundo de texto não tem radius.
-- O wrapping e o bounding box do PNG usam uma estimativa de largura por caractere; o desenho Swift pode ser um pouco mais estreito ou largo que a caixa.
-- Effects são estáticos. `opacity` mistura a cena com o canvas preto (YUV); não fura a cena seguinte fora do `crossfade`.
-- `grayscale` e `sepia` passam por `format=gbrp` + `colorchannelmixer` e voltam para `yuv420p`.
-- `source` tipo `url` aceita só HTTP/HTTPS, baixa para o temp do render e apaga depois.
-- `source` tipo `file` não copia o arquivo; se o original sumir, o próximo render falha.
-- Uma string em `source` precisa existir em `assets` ou ser um caminho absoluto.
+- There are no keyframes: each animated field has only `from` → `to` and one curve (`linear`, `ease-in`, `ease-out`, `ease-in-out`).
+- The last animation frame lands at `t ≈ duration - 1/fps`, not exactly at `t = duration`. The FFmpeg expression reaches `to` when `t = duration`.
+- `crop` is not checked against the real file resolution (probe reads duration only).
+- `mediaStart` past EOF and `shortMedia: error` with short media are validated with `ffprobe` of the container duration. Without a readable duration, the render fails with a clear message.
+- Image inputs use the `image2` demuxer default framerate (25). Compositions with a different `fps` depend on the `fps` filter during normalization.
+- Visual fade does not insert an extra black segment: 5s + 5s with a 1s fade still lasts **10s**.
+- Audio does not crossfade; on visual overlap, `keepAudio` and scene audio can mix in `amix`.
+- `keepAudio` and scene audio do not inherit `mediaStart` from the video.
+- Text shadow has no blur (`shadow.blur` only accepts `0`). Text background has no radius.
+- PNG wrapping and bounding box use a per-character width estimate; the Swift drawing can be slightly narrower or wider than the box.
+- Effects are static. `opacity` mixes the scene with the black canvas (YUV); it does not punch through the next scene outside `crossfade`.
+- `grayscale` and `sepia` go through `format=gbrp` + `colorchannelmixer` and back to `yuv420p`.
+- `url` sources accept only HTTP/HTTPS, download into the render temp dir, and delete afterwards.
+- `file` sources do not copy the file; if the original disappears, the next render fails.
+- A `source` string must exist in `assets` or be an absolute path.
 
-## Arquitetura
+## Architecture
 
 ```text
 render({ composition, assets, output })
@@ -538,61 +540,62 @@ render({ composition, assets, output })
 CompositionParser
          ↓
 Renderer.prepare
- ├── SourceResolver → arquivo local (asset / file / url)
- └── MediaResolver  → path já resolvido
+ ├── SourceResolver → local file (asset / file / url)
+ └── MediaResolver  → already-resolved path
          ↓
 RenderPlan → FfmpegCommandBuilder → FfmpegExecutor → FFmpeg
 ```
 
-O `RenderPlan` é uma timeline de tracks independentes:
+`RenderPlan` is a timeline of independent tracks:
 
 ```text
-Video Track     cenas em sequência (transform e effects opcionais); overlap só com crossfade
-Audio Track     clips com start absoluto
-Overlay Track   imagens sobrepostas
-Text Track      drawtext (ou PNG rasterizado)
+Video Track     sequential scenes (optional transform and effects); overlap only with crossfade
+Audio Track     clips with an absolute start
+Overlay Track   overlaid images
+Text Track      drawtext (or rasterized PNG)
 ```
 
-O `Renderer` orquestra as peças especializadas:
+`Renderer` orchestrates the specialized pieces:
 
 ```text
 Renderer
- ├── SourceResolver         (file / asset / url → path local)
- ├── MediaResolver          (path absoluto ou pasta configurada)
+ ├── SourceResolver         (file / asset / url → local path)
+ ├── MediaResolver          (absolute path or configured folder)
  ├── FontResolver
  ├── AudioTimeline
  ├── FfmpegCommandBuilder
  └── FfmpegExecutor
 ```
 
-O fallback de texto (PNG no bounding box) é escolhido pelo `Renderer` quando o FFmpeg não tem `drawtext`.
+The text fallback (PNG on the bounding box) is chosen by `Renderer` when FFmpeg has no `drawtext`.
 
-## Estrutura
+## Structure
 
 ```text
-dist/                     # build publicado no npm (pnpm build)
-scripts/                  # fallback de texto (Swift) sem drawtext
-examples/                 # smoke render local
+dist/                     # build published to npm (pnpm build)
+scripts/                  # text fallback (Swift) without drawtext
+examples/                 # local smoke render
 src/
-  index.ts                # API pública
-  api/                    # render() programático
-  composition/            # parser e timeline de áudio
+  index.ts                # public API
+  api/                    # programmatic render()
+  composition/            # parser and audio timeline
   source/                 # SourceResolver (file / asset / url)
-  media/                  # resolução de arquivos e fontes
-  renderer/               # orquestração, contexto e métricas
-  ffmpeg/                 # filtros, comando e executor
-  text/                   # wrapping e rasterização
-  interfaces/             # tipagens de domínio
+  media/                  # file and font resolution
+  renderer/               # orchestration, context, and metrics
+  ffmpeg/                 # filters, command, and executor
+  text/                   # wrapping and rasterization
+  interfaces/             # domain types
 ```
 
-## Documentação
+## Documentation
 
-- [docs/api.md](docs/api.md) — API pública (`render`, `parseComposition`, resultado)
-- [docs/assets.md](docs/assets.md) — sources (`file`, `asset`, `url`) e mapa `assets`
-- [docs/publishing.md](docs/publishing.md) — publicar no npm pelo GitHub
-- [docs/render-pipeline.md](docs/render-pipeline.md) — ciclo de vida do render
-- [docs/progress.md](docs/progress.md) — callback de progresso
-- [docs/cancellation.md](docs/cancellation.md) — AbortSignal e cleanup
+- [docs/api.md](docs/api.md) — public API (`render`, `parseComposition`, result)
+- [docs/assets.md](docs/assets.md) — sources (`file`, `asset`, `url`) and the `assets` map
+- [docs/publishing.md](docs/publishing.md) — publish to npm from GitHub
+- [docs/render-pipeline.md](docs/render-pipeline.md) — render lifecycle
+- [docs/progress.md](docs/progress.md) — progress callback
+- [docs/cancellation.md](docs/cancellation.md) — AbortSignal and cleanup
 - [docs/performance.md](docs/performance.md) — render factor
-- [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
-- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph
+- [flow-create-video.md](flow-create-video.md) — how JSON becomes an FFmpeg command
+- [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filters, and the filter graph
+- [Portuguese documentation](README.pt-BR.md)

@@ -1,13 +1,15 @@
-# Assets e sources
+# Assets and sources
 
-O campo `source` de cenas, áudios e overlays aceita uma **string** (id lógico ou caminho absoluto) ou um **objeto**. Em todos os casos o FFmpeg só recebe um caminho local.
+**English** | [Português](pt-BR/assets.md)
+
+The `source` field on scenes, audio clips, and overlays accepts a **string** (logical id or absolute path) or an **object**. In every case FFmpeg only receives a local path.
 
 ```text
 string "background"                 → assets.background
-string "/abs/foto.jpg"              → o próprio caminho
+string "/abs/photo.jpg"             → the path itself
 { type: "asset", id: "background" } → assets.background
 { type: "file", path }              → LocalFileSourceResolver
-{ type: "url", url }                → download em RenderContext/downloads/
+{ type: "url", url }                → download into RenderContext/downloads/
          ↓
 ResolvedSource.path
          ↓
@@ -16,11 +18,11 @@ MediaResolver / RenderPlan
 FFmpeg
 ```
 
-A aplicação passa o mapa em `render({ assets })`. O core não importa, cataloga nem copia mídia para `storage/`. Não existe pasta `input/` obrigatória.
+The app passes the map in `render({ assets })`. The core does not import, catalog, or copy media into `storage/`. There is no required `input/` folder.
 
-## string e asset
+## string and asset
 
-Os dois resolvem o mesmo mapa:
+Both resolve the same map:
 
 ```ts
 await render({
@@ -42,7 +44,7 @@ await render({
 }
 ```
 
-Uma string relativa que não está em `assets` falha. Os JSONs em `compositions/` usam nomes de arquivo como id (`"flamengo.png"`). Para renderizá-los, mapeie cada id:
+A relative string that is not in `assets` fails. The JSON files in `compositions/` use file names as ids (`"flamengo.png"`). To render them, map each id:
 
 ```ts
 assets: {
@@ -53,48 +55,48 @@ assets: {
 
 ## file
 
-Arquivo em qualquer lugar do computador. O engine **lê no lugar**; não copia.
+A file anywhere on disk. The engine **reads it in place**; it does not copy.
 
 ```json
 {
   "type": "image",
   "source": {
     "type": "file",
-    "path": "/Users/caio/Desktop/foto.jpg"
+    "path": "/Users/caio/Desktop/photo.jpg"
   },
   "duration": 5
 }
 ```
 
-O arquivo precisa existir e ser um arquivo (não um diretório).
+The file must exist and be a file (not a directory).
 
 ## url
 
-Somente `http://` e `https://`. O arquivo é baixado para `RenderContext.downloadsDir` (timeout 30s) e apagado no sucesso, no erro e no cancelamento.
+Only `http://` and `https://`. The file is downloaded into `RenderContext.downloadsDir` (30s timeout) and deleted on success, error, and cancellation.
 
 ```json
 {
   "type": "image",
   "source": {
     "type": "url",
-    "url": "https://example.com/foto.jpg"
+    "url": "https://example.com/photo.jpg"
   },
   "duration": 5
 }
 ```
 
-## Fontes
+## Fonts
 
-Texto não usa `assets`. A fonte vem de:
+Text does not use `assets`. The font comes from:
 
-1. caminho absoluto no campo `font` / `style.font` (arquivo `.ttf` / `.otf` / `.ttc`);
-2. diretório passado em `render({ fonts })`;
-3. fontes empacotadas no pacote npm (`assets/fonts`);
-4. fontes do sistema (Arial, DejaVu, Liberation, etc.).
+1. an absolute path in `font` / `style.font` (`.ttf` / `.otf` / `.ttc` file);
+2. the directory passed in `render({ fonts })`;
+3. fonts bundled in the npm package (`assets/fonts`);
+4. system fonts (Arial, DejaVu, Liberation, and similar).
 
-## Onde `source` aparece
+## Where `source` appears
 
-O mesmo contrato vale em:
+The same contract applies to:
 
 - `scenes[].source`
 - `scenes[].audio[].source`

@@ -1,18 +1,20 @@
-# API pública
+# Public API
 
-Instale o pacote publicado:
+**English** | [Português](pt-BR/api.md)
+
+Install the published package:
 
 ```bash
 pnpm add @caiorafael/patchwork
 ```
 
-O Patchwork expõe uma superfície pequena. A aplicação consumidora constrói a `Composition` e chama `render`.
+Patchwork exposes a small surface. The consuming app builds a `Composition` and calls `render`.
 
 ```ts
 import { render, parseComposition } from '@caiorafael/patchwork'
 ```
 
-Não há CLI, HTTP, templates nem factory neste pacote.
+This package has no CLI, HTTP server, templates, or factory.
 
 ## `render`
 
@@ -27,20 +29,20 @@ const result = await render({
 })
 ```
 
-| Campo | Tipo | Obrigatório | Descrição |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `composition` | `unknown` | sim | Objeto JSON da composição, já em memória. Não é um caminho de arquivo. |
-| `assets` | `Record<string, string>` | não | Mapa de id lógico → caminho no disco. |
-| `output` | `string` ou `{ path: string }` | sim | Caminho do MP4 final. |
-| `fonts` | `string` | não | Diretório extra de fontes (além do sistema e das fontes do pacote). |
-| `signal` | `AbortSignal` | não | Cancela o render. Ver [cancellation.md](cancellation.md). |
-| `onProgress` | `(progress) => void` | não | Progresso do render. Ver [progress.md](progress.md). |
+| `composition` | `unknown` | yes | In-memory composition JSON object. Not a file path. |
+| `assets` | `Record<string, string>` | no | Logical id → disk path map. |
+| `output` | `string` or `{ path: string }` | yes | Final MP4 path. |
+| `fonts` | `string` | no | Extra font directory (in addition to system fonts and package fonts). |
+| `signal` | `AbortSignal` | no | Cancels the render. See [cancellation.md](cancellation.md). |
+| `onProgress` | `(progress) => void` | no | Render progress. See [progress.md](progress.md). |
 
-O parser valida `composition` internamente. JSON inválido ou composition sem cenas lança antes do FFmpeg.
+The parser validates `composition` internally. Invalid JSON or a composition with no scenes throws before FFmpeg runs.
 
-`output` na API **substitui** o campo `output` da composition. O default `output.mp4` do parser só existe se a API não for usada.
+`output` on the API **replaces** the composition `output` field. The parser default `output.mp4` only applies when the API is not used.
 
-## Resultado
+## Result
 
 ```ts
 interface RenderOutputResult {
@@ -50,17 +52,17 @@ interface RenderOutputResult {
 }
 ```
 
-| Campo | Origem |
+| Field | Source |
 |---|---|
-| `outputPath` | caminho absoluto do MP4 |
-| `duration` | duração visual do vídeo, em segundos (`metrics.videoDuration`) |
-| `metrics` | tempos, contagens e tamanho já medidos pelo renderer |
+| `outputPath` | absolute MP4 path |
+| `duration` | visual video duration, in seconds (`metrics.videoDuration`) |
+| `metrics` | timings, counts, and size already measured by the renderer |
 
-`metrics` inclui `renderFactor`, `renderDurationMs`, `outputSizeBytes`, `sceneCount`, `audioCount`, `textCount`, `overlayCount`, `transitionCount`, `effectCount` e tempos por fase. Em falha a função **lança**; não devolve status.
+`metrics` includes `renderFactor`, `renderDurationMs`, `outputSizeBytes`, `sceneCount`, `audioCount`, `textCount`, `overlayCount`, `transitionCount`, `effectCount`, and per-phase timings. On failure the function **throws**; it does not return a status.
 
 ## `parseComposition`
 
-Valida e aplica defaults sem renderizar.
+Validates and applies defaults without rendering.
 
 ```ts
 const composition = parseComposition({
@@ -71,10 +73,10 @@ composition.width // 1920
 composition.output // 'output.mp4'
 ```
 
-Equivale a `new CompositionParser().parse(raw)`. Use quando a aplicação precisa inspecionar a composition antes de chamar `render`.
+Equivalent to `new CompositionParser().parse(raw)`. Use this when the app needs to inspect the composition before calling `render`.
 
-## Types exportados
+## Exported types
 
-Além de `render` e `parseComposition`, o pacote exporta `CompositionParser` e os tipos de domínio: `Composition`, `Scene`, `AudioClip`, `TextClip`, `OverlayClip`, `Source`, `Transform`, `VideoEffects`, `Transition`, `RenderInput`, `RenderOutputResult`, `RenderProgress`, `RenderMetrics`.
+Besides `render` and `parseComposition`, the package exports `CompositionParser` and the domain types: `Composition`, `Scene`, `AudioClip`, `TextClip`, `OverlayClip`, `Source`, `Transform`, `VideoEffects`, `Transition`, `RenderInput`, `RenderOutputResult`, `RenderProgress`, `RenderMetrics`.
 
-O consumidor não precisa importar FFmpeg, filtros, `Renderer` nem arquivos temporários.
+Consumers do not need to import FFmpeg, filters, `Renderer`, or temporary files.

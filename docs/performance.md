@@ -1,20 +1,22 @@
 # Performance
 
-Indicador principal:
+**English** | [Português](pt-BR/performance.md)
+
+Main indicator:
 
 ```text
 renderFactor = renderTimeSeconds / videoDurationSeconds
 ```
 
-Menor é melhor. Medido com `performance.now()`.
+Lower is better. Measured with `performance.now()`.
 
-## Como medir
+## How to measure
 
-O `render()` devolve `metrics.renderFactor`, `metrics.videoDuration` e tempos por fase. Use esses campos na aplicação consumidora.
+`render()` returns `metrics.renderFactor`, `metrics.videoDuration`, and per-phase timings. Use those fields in the consuming app.
 
-## Baseline (antes da otimização de rasterize)
+## Baseline (before the rasterize optimization)
 
-Máquina local, FFmpeg 9, 1920×1080, 25 fps, libx264.
+Local machine, FFmpeg 9, 1920×1080, 25 fps, libx264.
 
 ```text
 Benchmark                 Duration    Render    Factor
@@ -32,29 +34,29 @@ animated                     6.00s     3.23s     0.54x
 full                        11.00s    10.28s     0.93x
 ```
 
-Perfil típico (1 cena, sem texto): FFmpeg ≈ 99% do tempo.
+Typical profile (1 scene, no text): FFmpeg ≈ 99% of the time.
 
-`many-texts` (8 textos, fallback PNG):
+`many-texts` (8 texts, PNG fallback):
 
 ```text
-ANTES (rasterize sequencial)
+BEFORE (sequential rasterize)
   Preparing / Swift:  8.53s
   FFmpeg:            32.21s
   Total:             40.74s  (5.09x)
 
-DEPOIS (até 4 processos Swift em paralelo)
+AFTER (up to 4 Swift processes in parallel)
   Preparing / Swift:  4.92s
-  FFmpeg:            36.25s   (variação de encode)
+  FFmpeg:            36.25s   (encode variance)
   Total:             41.19s
 ```
 
-A rasterização ficou ~42% mais rápida. O encode/overlays do FFmpeg continua dominando essa carga (~80%+).
+Rasterization became ~42% faster. FFmpeg encode/overlays still dominate this workload (~80%+).
 
-## Bounding box de texto (Fase 11)
+## Text bounding box (Phase 11)
 
-O fallback PNG passou a gerar só a área do texto (padding, stroke e shadow inclusos). Overlay reposiciona o PNG.
+The PNG fallback now generates only the text area (padding, stroke, and shadow included). Overlay repositions the PNG.
 
-`many-texts` na mesma máquina, depois da mudança:
+`many-texts` on the same machine, after the change:
 
 ```text
 Preparing / Swift:  1.84s
@@ -62,26 +64,26 @@ FFmpeg:             1.60s
 Total:              1.61s  (0.20x)
 ```
 
-ANTES (PNG 1920×1080): 40.74s / 5.09x.
-O custo do overlay full-frame era o gargalo real.
+BEFORE (1920×1080 PNG): 40.74s / 5.09x.
+Full-frame overlay cost was the real bottleneck.
 
-## Gargalos
+## Bottlenecks
 
-1. **FFmpeg encode** — custo principal em cenas sem muitos textos.
-2. **Fallback de texto** — ainda usa Swift + PNG, agora no bounding box.
-3. **Effects / animated scale** — um pouco mais caros que pad simples, ainda no FFmpeg.
+1. **FFmpeg encode** — main cost on scenes without many texts.
+2. **Text fallback** — still uses Swift + PNG, now on the bounding box.
+3. **Effects / animated scale** — a bit more expensive than a simple pad, still inside FFmpeg.
 
-## O que não foi feito
+## What was not done
 
-- cache, workers persistentes, mudança de `-preset` do x264
-- juntar filtros `eq` (ganho irrelevante frente ao encode)
+- cache, persistent workers, changing the x264 `-preset`
+- merging `eq` filters (irrelevant gain versus encode)
 
-## Memória
+## Memory
 
-O executor não acumula stdout/stderr. Mantém no máximo ~16 KB de stderr para a mensagem de erro. Mídia não é carregada no Node.
+The executor does not accumulate stdout/stderr. It keeps at most ~16 KB of stderr for the error message. Media is not loaded into Node.
 
-## Concorrência
+## Concurrency
 
-Cada render tem o próprio `RenderContext`. Rasterização de texto usa no máximo 4 processos Swift por render.
+Each render has its own `RenderContext`. Text rasterization uses at most 4 Swift processes per render.
 
-O core renderiza **um** vídeo por chamada a `render()`. Lote e limite de FFmpeg simultâneos ficam na aplicação consumidora.
+The core renders **one** video per `render()` call. Batching and FFmpeg concurrency limits belong in the consuming app.

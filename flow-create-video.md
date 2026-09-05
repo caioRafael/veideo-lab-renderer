@@ -1,6 +1,8 @@
-# Guia: Composition → MP4
+# Guide: Composition → MP4
 
-Como o objeto de composição vira um vídeo no Patchwork. A entrada é `render({ composition, assets, output })`. Não há arquivo JSON obrigatório nem CLI.
+**English** | [Português](docs/pt-BR/flow-create-video.md)
+
+How a composition object becomes a video in Patchwork. The entry point is `render({ composition, assets, output })`. There is no required JSON file and no CLI.
 
 ## Pipeline
 
@@ -8,8 +10,8 @@ Como o objeto de composição vira um vídeo no Patchwork. A entrada é `render(
 render({ composition, assets, output })
 → CompositionParser
 → Renderer.prepare
-    → SourceResolver (file / asset / url → path local)
-    → MediaResolver  (path já resolvido)
+    → SourceResolver (file / asset / url → local path)
+    → MediaResolver  (already-resolved path)
 → RenderPlan
 → Tracks
 → FfmpegCommandBuilder
@@ -18,22 +20,22 @@ render({ composition, assets, output })
 → MP4
 ```
 
-O objeto descreve a timeline. O parser valida e aplica defaults. Sources estruturadas viram arquivo local no `prepare`. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
+The object describes the timeline. The parser validates it and applies defaults. Structured sources become a local file during `prepare`. `Renderer` builds a `RenderPlan` with independent tracks. Only then `FfmpegCommandBuilder` produces FFmpeg arguments (`spawn`, not a concatenated string).
 
 ```text
-Video Track     cenas em sequência (image ou video)
-Audio Track     clips com start absoluto
-Overlay Track   imagens sobrepostas
-Text Track      drawtext, ou PNG no bounding box se o FFmpeg não tiver libfreetype
+Video Track     sequential scenes (image or video)
+Audio Track     clips with an absolute start
+Overlay Track   overlaid images
+Text Track      drawtext, or a bounding-box PNG if FFmpeg has no libfreetype
 ```
 
-Camadas visuais, de baixo para cima: vídeo → overlays → texto.
+Visual layers, bottom to top: video → overlays → text.
 
 ---
 
-## Schema do JSON
+## JSON schema
 
-Exemplo em `compositions/example.json`. As strings de `source` são ids do mapa `assets` passado em `render({ assets })`.
+Example in `compositions/example.json`. `source` strings are ids from the `assets` map passed to `render({ assets })`.
 
 ```ts
 await render({
@@ -61,30 +63,30 @@ await render({
 })
 ```
 
-`source` também aceita `{ type: "file" }`, `{ type: "asset", id }` ou `{ type: "url" }`. Depois do `SourceResolver`, o FFmpeg recebe um path local — o `RenderPlan` não conhece URL nem id de asset. Ver [docs/assets.md](docs/assets.md) e [docs/api.md](docs/api.md).
+`source` also accepts `{ type: "file" }`, `{ type: "asset", id }`, or `{ type: "url" }`. After `SourceResolver`, FFmpeg receives a local path — `RenderPlan` does not know about URLs or asset ids. See [docs/assets.md](docs/assets.md) and [docs/api.md](docs/api.md).
 
-### Cenas
+### Scenes
 
-- `type`: `image` ou `video`
-- `source`, `duration` (duração da cena na timeline global)
-- `mediaStart?`: só em `video`; offset no arquivo. Default `0`
-- `shortMedia?`: só em `video`; `error` (default), `loop` ou `freeze` quando a mídia não preenche a cena
-- `audio?`: áudios extras da cena (`start` relativo à cena)
-- `keepAudio?`: só em `video`; mantém a faixa original do arquivo (timeline da cena, não de `mediaStart`)
+- `type`: `image` or `video`
+- `source`, `duration` (scene duration on the global timeline)
+- `mediaStart?`: `video` only; offset in the file. Default `0`
+- `shortMedia?`: `video` only; `error` (default), `loop`, or `freeze` when the media does not fill the scene
+- `audio?`: extra scene audio (`start` relative to the scene)
+- `keepAudio?`: `video` only; keeps the file's original track (scene timeline, not `mediaStart`)
 
-### Áudio extra
+### Extra audio
 
-- global (`audio` na raiz, `start` absoluto) ou por cena
-- `role`: `background` (vol. 0.3) ou `focus` (vol. 1.0)
-- `volume` opcional sobrescreve o `role`
+- global (`audio` at the root, absolute `start`) or per scene
+- `role`: `background` (vol. 0.3) or `focus` (vol. 1.0)
+- optional `volume` overrides the `role`
 
-### Textos e overlays
+### Texts and overlays
 
-Opcionais, com `start` absoluto na timeline. `x`/`y` ou `position` são o ponto de referência da caixa. `style.align` / `style.verticalAlign` definem qual borda encosta nesse ponto. `box.width` dispara wrapping no Node. Ver `compositions/text-basic.json`, `text-full.json`, `texts.json`.
+Optional, with an absolute `start` on the timeline. `x`/`y` or `position` is the box reference point. `style.align` / `style.verticalAlign` decide which edge sits on that point. `box.width` triggers wrapping in Node. See `compositions/text-basic.json`, `text-full.json`, `texts.json`.
 
-Exemplos com cena de vídeo: `compositions/video-photos.json`, `video-and-photos.json`, `video-timeline.json`.
+Examples with a video scene: `compositions/video-photos.json`, `video-and-photos.json`, `video-timeline.json`.
 
-### Timeline de `example.json`
+### `example.json` timeline
 
 ```text
 0s ──────── 4s ──────── 8s ────────────── 14s
@@ -95,85 +97,85 @@ Exemplos com cena de vídeo: `compositions/video-photos.json`, `video-and-photos
 
 ---
 
-## Como o RenderPlan vira FFmpeg
+## How RenderPlan becomes FFmpeg
 
-O `RenderPlan` não contém `-filter_complex` nem `drawtext`. Isso fica no builder.
+`RenderPlan` does not contain `-filter_complex` or `drawtext`. That lives in the builder.
 
-### 1. Inputs de cena
+### 1. Scene inputs
 
-Imagem:
+Image:
 
 ```bash
 -loop 1 -t 4 -i /path/flamengo.png
 ```
 
-Vídeo (sem offset):
+Video (no offset):
 
 ```bash
 -t 8 -i /path/gloria-eterna.mp4
 ```
 
-Vídeo com `mediaStart` / `shortMedia`:
+Video with `mediaStart` / `shortMedia`:
 
 ```bash
 -ss 20 -t 5 -i /path/gloria-eterna.mp4          # trim
--ss 164 -t 1.837 -i /path/gloria-eterna.mp4     # loop: lê o trecho disponível; split+concat no filtro
--ss 164 -t 6 -i /path/gloria-eterna.mp4         # freeze (tpad no filtro)
+-ss 164 -t 1.837 -i /path/gloria-eterna.mp4     # loop: reads the available segment; split+concat in the filter
+-ss 164 -t 6 -i /path/gloria-eterna.mp4         # freeze (tpad in the filter)
 ```
 
-Depois do seek, o filtro zera PTS (`setpts=PTS-STARTPTS`) para a cena começar em `t = 0`. Animação e transição usam a duração da cena, não o relógio do arquivo.
+After the seek, the filter zeros PTS (`setpts=PTS-STARTPTS`) so the scene starts at `t = 0`. Animation and transition use the scene duration, not the file clock.
 
-### 2. Transformar, padronizar, aplicar efeitos e concatenar vídeo
+### 2. Transform, normalize, apply effects, and concatenate video
 
-Sem `transform` (ou só com `crop`), cada cena entra no canvas assim:
+Without `transform` (or with `crop` only), each scene enters the canvas like this:
 
 ```text
-[0:v]crop=…,   # só se houver crop
+[0:v]crop=…,   # only if there is a crop
      scale=1920:1080:force_original_aspect_ratio=decrease,
      pad=1920:1080:(ow-iw)/2:(oh-ih)/2,
      setsar=1,fps=25,format=yuv420p[v0]
 ```
 
-Com `scale` / `zoom` / `x` / `y` / `pan`, o `pad` vira overlay no canvas preto — o frame final continua 1920×1080, `yuv420p`, mesmo FPS e SAR 1, para o `xfade` receber streams compatíveis.
+With `scale` / `zoom` / `x` / `y` / `pan`, `pad` becomes an overlay on a black canvas — the final frame stays 1920×1080, `yuv420p`, same FPS and SAR 1, so `xfade` receives compatible streams.
 
-Valores estáticos (`scale: 1.2`) geram constantes no filtro. Valores animados (`scale: { from, to }`) viram expressões de `t` no FFmpeg. Sem `easing`, a curva é `linear`. Com `ease-in` / `ease-out` / `ease-in-out`, o `VideoFilter` traduz a curva para `pow` / `if` na expression; o Node não gera um frame por instante. O conteúdo passa por `setpts=PTS-STARTPTS` antes dessas expressões, para `t = 0` ser o primeiro frame.
+Static values (`scale: 1.2`) become constants in the filter. Animated values (`scale: { from, to }`) become FFmpeg `t` expressions. Without `easing`, the curve is `linear`. With `ease-in` / `ease-out` / `ease-in-out`, `VideoFilter` translates the curve to `pow` / `if` in the expression; Node does not generate one frame per instant. The content goes through `setpts=PTS-STARTPTS` before those expressions, so `t = 0` is the first frame.
 
-`effects` entram depois do canvas (`format=yuv420p`) e antes da transição. O `EffectFilter` emite só os filtros dos valores não-default, nesta ordem:
+`effects` enter after the canvas (`format=yuv420p`) and before the transition. `EffectFilter` emits only filters for non-default values, in this order:
 
 ```text
-opacity (lutyuv → canvas preto)
+opacity (lutyuv → black canvas)
  → brightness / contrast / saturation (`eq`)
  → grayscale / sepia (`format=gbrp` + `colorchannelmixer` + `format=yuv420p`)
  → blur (`boxblur`)
 ```
 
-A ordem das chaves no JSON não muda o graph. `effects: {}` não adiciona filtro. Texto e overlay independentes não passam por essa cadeia.
+JSON key order does not change the graph. `effects: {}` adds no filter. Independent text and overlays do not go through this chain.
 
 ```text
 input → mediaStart/trim → shortMedia (loop/freeze/error) → crop → canvas fit → scale/zoom → position/pan → easing → effects → transition
 ```
 
-`x`/`y` (e `pan`) são deslocamento a partir do centro, em pixels do canvas.
+`x`/`y` (and `pan`) are offsets from the center, in canvas pixels.
 
 ```text
 [v0][v1][v2]concat=n=3:v=1:a=0[vout]
 ```
 
-Se houver overlay ou texto, o concat sai em `[vbase]` e as camadas seguintes terminam em `[vout]`. Transformações da cena **não** se aplicam a texto nem overlay.
+If there is an overlay or text, concat exits as `[vbase]` and the following layers end as `[vout]`. Scene transforms **do not** apply to text or overlays.
 
-### 3. Áudio
+### 3. Audio
 
-Cada item da audio track vira `-i` + `atrim` / `adelay` / `volume` / `apad`. Vários itens entram em `amix`. Sem áudio, o builder usa `anullsrc`.
+Each audio-track item becomes `-i` + `atrim` / `adelay` / `volume` / `apad`. Multiple items go into `amix`. With no audio, the builder uses `anullsrc`.
 
-`keepAudio: true` coloca a faixa do próprio MP4 na audio track, no início **visual** da cena (com overlap no crossfade). Áudio declarado em `scenes[].audio` usa o mesmo início visual. `video.mediaStart` não atrasa esse áudio.
+`keepAudio: true` puts the MP4's own track on the audio track at the scene's **visual** start (with overlap on crossfade). Audio declared in `scenes[].audio` uses the same visual start. `video.mediaStart` does not delay that audio.
 
-### 4. Overlays e textos
+### 4. Overlays and texts
 
-Overlays: `scale` + `overlay` com `enable='between(t,start,end)'`.
+Overlays: `scale` + `overlay` with `enable='between(t,start,end)'`.
 
-Textos: o `TextRenderer` normaliza linhas (wrap no Node). Com `drawtext`, o `TextFilter` emite `fontsize`, `x`/`y` pelo ponto de referência, `line_spacing`, `borderw`, `shadowx`/`shadowy`, `box`/`boxcolor`/`boxborderw`. Sem `drawtext`, o mesmo `TextItem` vira PNG via Swift.
+Texts: `TextRenderer` normalizes lines (wrap in Node). With `drawtext`, `TextFilter` emits `fontsize`, `x`/`y` from the reference point, `line_spacing`, `borderw`, `shadowx`/`shadowy`, `box`/`boxcolor`/`boxborderw`. Without `drawtext`, the same `TextItem` becomes a PNG via Swift.
 
-### 5. Exportar
+### 5. Export
 
 ```bash
 -map "[vout]" -map "[aout]"
@@ -184,7 +186,7 @@ Textos: o `TextRenderer` normaliza linhas (wrap no Node). Com `drawtext`, o `Tex
 
 ---
 
-## Diagrama
+## Diagram
 
 ```text
 render({ composition, assets, output })
@@ -192,8 +194,8 @@ render({ composition, assets, output })
 CompositionParser
  ↓
 Renderer.prepare
-  SourceResolver → path local
-  MediaResolver  → path já resolvido
+  SourceResolver → local path
+  MediaResolver  → already-resolved path
  ↓
 RenderPlan (tracks)
  ↓
@@ -207,13 +209,13 @@ MP4
 ```text
 scenes image/video ─► Video Track ─► media time ─► crop? ─► fit ─► transform ─► effects ─► concat/xfade ─► [vbase]
 overlays            ─► Overlay Track ─► scale + overlay ────────────────────────────────────────► [vout]
-texts               ─► Text Track ─► drawtext ou PNG overlay ───────────────────────────────────┘
+texts               ─► Text Track ─► drawtext or PNG overlay ───────────────────────────────────┘
 audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ────────────────────────────────────────► [aout]
 ```
 
 ---
 
-## Como usar
+## How to use it
 
 ```ts
 import { render } from '@caiorafael/patchwork'
@@ -225,6 +227,6 @@ await render({
 })
 ```
 
-Instalação: `pnpm add @caiorafael/patchwork`. O pacote npm entrega o build em `dist/`.
+Install: `pnpm add @caiorafael/patchwork`. The npm package ships the build in `dist/`.
 
-Exemplos de Composition estão em `compositions/`. As strings de `source` nesses arquivos são ids de asset. Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) são estáticos e entram depois do transform. Ver [README](README.md#transformações), [README](README.md#efeitos) e [docs/api.md](docs/api.md).
+Composition examples live in `compositions/`. `source` strings in those files are asset ids. Transitions (`fade` / `crossfade`) are declared on the destination scene. Transforms (`scale`, `position`, `crop`, `zoom`, `pan`) belong to the scene media and can be static or animated (`from`/`to`, with optional `easing`). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) are static and enter after the transform. See [README](README.md#transforms), [README](README.md#effects), and [docs/api.md](docs/api.md).

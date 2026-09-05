@@ -1,32 +1,32 @@
-# FFmpeg — Command and Flag Guide for a Video Engine
+# FFmpeg — Guia de Comandos e Flags para um Video Engine
 
-**English** | [Português](docs/pt-BR/ffmpeg-guide.md)
+[English](../../ffmpeg-guide.md) | **Português**
 
-> Practical reference for building a video renderer in Node.js/TypeScript using the `ffmpeg` executable directly.
+> Referência prática para construir um renderer de vídeo em Node.js/TypeScript usando o executável `ffmpeg` diretamente.
 
 ---
 
-# 1. Basic structure
+# 1. Estrutura básica
 
-The general structure of an FFmpeg command is:
+A estrutura geral de um comando FFmpeg é:
 
 ```bash
-ffmpeg [global options] [input options] -i INPUT [output options] OUTPUT
+ffmpeg [opções globais] [opções de entrada] -i INPUT [opções de saída] OUTPUT
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg -i input.mp4 output.mp4
 ```
 
-With multiple inputs:
+Com múltiplas entradas:
 
 ```bash
 ffmpeg -i video.mp4 -i audio.mp3 output.mp4
 ```
 
-With multiple inputs and filters:
+Com múltiplas entradas e filtros:
 
 ```bash
 ffmpeg \
@@ -38,9 +38,9 @@ ffmpeg \
 
 ---
 
-# 2. Core concept: streams
+# 2. Conceito fundamental: streams
 
-A multimedia file can contain several streams:
+Um arquivo multimídia pode conter várias streams:
 
 ```text
 MP4
@@ -50,7 +50,7 @@ MP4
 └── Data
 ```
 
-FFmpeg identifies streams using:
+O FFmpeg identifica streams usando:
 
 ```text
 :v = video
@@ -59,7 +59,7 @@ FFmpeg identifies streams using:
 :d = data
 ```
 
-Examples:
+Exemplos:
 
 ```bash
 -c:v libx264
@@ -74,13 +74,13 @@ Examples:
 
 ## `-i`
 
-Defines an input.
+Define uma entrada.
 
 ```bash
 ffmpeg -i input.mp4 output.mp4
 ```
 
-Multiple inputs:
+Múltiplas entradas:
 
 ```bash
 ffmpeg \
@@ -89,16 +89,16 @@ ffmpeg \
   output.mp4
 ```
 
-Inputs receive indexes:
+Os inputs recebem índices:
 
 ```text
-0 = first input
-1 = second input
-2 = third input
+0 = primeiro input
+1 = segundo input
+2 = terceiro input
 ...
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -109,42 +109,42 @@ ffmpeg \
 ```
 
 ```text
-0:v → video
-1:a → music
-2:a → narration
+0:v → vídeo
+1:a → música
+2:a → narração
 ```
 
 ---
 
 # 4. `-map`
 
-Explicitly defines which streams go to the output.
+Define explicitamente quais streams irão para a saída.
 
 ```bash
 -map 0:v
 ```
 
-First video.
+Primeiro vídeo.
 
 ```bash
 -map 0:a
 ```
 
-First audio.
+Primeiro áudio.
 
 ```bash
 -map 0:v:0
 ```
 
-First video of the first input.
+Primeiro vídeo do primeiro input.
 
 ```bash
 -map 1:a:0
 ```
 
-First audio of the second input.
+Primeiro áudio do segundo input.
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -155,7 +155,7 @@ ffmpeg \
   output.mp4
 ```
 
-This means:
+Isso significa:
 
 ```text
 video.mp4
@@ -167,7 +167,7 @@ narration.mp3         ├──► output.mp4
    └── audio ─────────┘
 ```
 
-For a Video Engine, `-map` is extremely important.
+Para um Video Engine, `-map` é extremamente importante.
 
 ---
 
@@ -175,33 +175,33 @@ For a Video Engine, `-map` is extremely important.
 
 ## `-c`
 
-Defines the codec.
+Define o codec.
 
 ```bash
 -c:v libx264
 ```
 
-Video codec.
+Codec de vídeo.
 
 ```bash
 -c:a aac
 ```
 
-Audio codec.
+Codec de áudio.
 
 ```bash
 -c:v copy
 ```
 
-Copies the video without re-encoding.
+Copia o vídeo sem reencodar.
 
 ```bash
 -c:a copy
 ```
 
-Copies the audio without re-encoding.
+Copia o áudio sem reencodar.
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -213,9 +213,9 @@ ffmpeg \
 
 ---
 
-# 6. Common codecs
+# 6. Codecs comuns
 
-## Video
+## Vídeo
 
 ### H.264
 
@@ -223,7 +223,7 @@ ffmpeg \
 -c:v libx264
 ```
 
-An excellent choice for videos compatible with YouTube and common players.
+Excelente escolha para vídeos compatíveis com YouTube e players comuns.
 
 ### H.265 / HEVC
 
@@ -231,19 +231,19 @@ An excellent choice for videos compatible with YouTube and common players.
 -c:v libx265
 ```
 
-Higher compression efficiency, but higher processing cost and less universal compatibility.
+Maior eficiência de compressão, mas maior custo de processamento e compatibilidade menos universal.
 
 ### AV1
 
-Depending on the installed build:
+Dependendo da build instalada:
 
 ```bash
 -c:v libaom-av1
 ```
 
-or other available AV1 encoders.
+ou outros encoders AV1 disponíveis.
 
-Check with:
+Confira:
 
 ```bash
 ffmpeg -encoders
@@ -253,13 +253,13 @@ ffmpeg -encoders
 
 # 7. Preset
 
-Used mainly by H.264/H.265.
+Usado principalmente pelo H.264/H.265.
 
 ```bash
 -preset medium
 ```
 
-Examples:
+Exemplos:
 
 ```bash
 -preset ultrafast
@@ -273,10 +273,10 @@ Examples:
 -preset veryslow
 ```
 
-General rule:
+Regra geral:
 
 ```text
-faster
+mais rápido
      ↓
 ultrafast
 superfast
@@ -288,22 +288,22 @@ slow
 slower
 veryslow
      ↓
-slower
+mais lento
 ```
 
-The slower the preset, the higher the compression efficiency for a given quality, at the cost of encoding time.
+Quanto mais lento o preset, normalmente maior a eficiência de compressão para uma determinada qualidade, ao custo de tempo de encoding.
 
 ---
 
 # 8. CRF
 
-Quality control for encoders such as libx264.
+Controle de qualidade para encoders como libx264.
 
 ```bash
 -crf 23
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -314,47 +314,47 @@ ffmpeg \
   output.mp4
 ```
 
-General rule:
+Regra geral:
 
 ```text
-Lower CRF = higher quality = larger file
+CRF menor = maior qualidade = arquivo maior
 
-Higher CRF = lower quality = smaller file
+CRF maior = menor qualidade = arquivo menor
 ```
 
-Common values for H.264:
+Valores comuns para H.264:
 
 ```text
-18 → high quality
-20 → high quality
-23 → common default
-26 → smaller size
-28 → lower quality
+18 → alta qualidade
+20 → alta qualidade
+23 → padrão comum
+26 → menor tamanho
+28 → qualidade mais baixa
 ```
 
 ---
 
 # 9. Bitrate
 
-## Video
+## Vídeo
 
 ```bash
 -b:v 5M
 ```
 
-Example:
+Exemplo:
 
 ```bash
 -b:v 8M
 ```
 
-## Audio
+## Áudio
 
 ```bash
 -b:a 192k
 ```
 
-Example:
+Exemplo:
 
 ```bash
 -b:a 128k
@@ -362,17 +362,17 @@ Example:
 
 ---
 
-# 10. Resolution
+# 10. Resolução
 
 ## `-s`
 
-Defines the resolution.
+Define resolução.
 
 ```bash
 -s 1920x1080
 ```
 
-Examples:
+Exemplos:
 
 ```bash
 -s 1280x720
@@ -380,7 +380,7 @@ Examples:
 -s 3840x2160
 ```
 
-However, for a Video Engine, prefer the `scale` filter in most cases:
+Porém, para um Video Engine, prefira frequentemente o filtro `scale`:
 
 ```bash
 -vf "scale=1920:1080"
@@ -392,13 +392,13 @@ However, for a Video Engine, prefer the `scale` filter in most cases:
 
 ## `-r`
 
-Defines the framerate.
+Define framerate.
 
 ```bash
 -r 30
 ```
 
-Examples:
+Exemplos:
 
 ```bash
 -r 24
@@ -413,15 +413,15 @@ Examples:
 
 ## `-pix_fmt`
 
-Defines the pixel format.
+Define formato de pixel.
 
-Very common for MP4:
+Muito comum para MP4:
 
 ```bash
 -pix_fmt yuv420p
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -430,21 +430,21 @@ ffmpeg \
   output.mp4
 ```
 
-For videos intended for broad compatibility, `yuv420p` is a common choice.
+Para vídeos destinados a ampla compatibilidade, `yuv420p` é uma escolha comum.
 
 ---
 
-# 13. Format/container
+# 13. Formato/container
 
 ## `-f`
 
-Forces the format.
+Força o formato.
 
 ```bash
 -f mp4
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -453,21 +453,21 @@ ffmpeg \
   output.mp4
 ```
 
-FFmpeg can usually infer the container from the file extension.
+Normalmente o FFmpeg consegue inferir o container pela extensão.
 
 ---
 
-# 14. Overwrite files
+# 14. Sobrescrever arquivos
 
 ## `-y`
 
-Overwrites automatically.
+Sobrescreve automaticamente.
 
 ```bash
 -y
 ```
 
-Very useful in the renderer:
+Muito útil no renderer:
 
 ```bash
 ffmpeg -y -i input.mp4 output.mp4
@@ -475,11 +475,11 @@ ffmpeg -y -i input.mp4 output.mp4
 
 ---
 
-# 15. Do not overwrite
+# 15. Não sobrescrever
 
 ## `-n`
 
-Does not overwrite existing files.
+Não sobrescreve arquivos existentes.
 
 ```bash
 -n
@@ -487,25 +487,25 @@ Does not overwrite existing files.
 
 ---
 
-# 16. Duration
+# 16. Duração
 
 ## `-t`
 
-Limits duration.
+Limita duração.
 
 ```bash
 -t 10
 ```
 
-10 seconds.
+10 segundos.
 
 ```bash
 -t 00:01:30
 ```
 
-1 minute and 30 seconds.
+1 minuto e 30 segundos.
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg -i input.mp4 -t 10 output.mp4
@@ -513,19 +513,19 @@ ffmpeg -i input.mp4 -t 10 output.mp4
 
 ---
 
-# 17. Video start
+# 17. Início do vídeo
 
 ## `-ss`
 
-Defines the start position.
+Define posição inicial.
 
 ```bash
 -ss 10
 ```
 
-Starts at 10 seconds.
+Começa em 10 segundos.
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -536,9 +536,9 @@ ffmpeg \
 
 ---
 
-# 18. Combining `-ss` + `-t`
+# 18. Combinar `-ss` + `-t`
 
-To cut a segment:
+Para cortar um trecho:
 
 ```bash
 ffmpeg \
@@ -548,7 +548,7 @@ ffmpeg \
   output.mp4
 ```
 
-Result:
+Resultado:
 
 ```text
 Input
@@ -556,16 +556,16 @@ Input
            ↑
           1:10
            │
-           └────── 10 seconds ──────┘
+           └────── 10 segundos ──────┘
 ```
 
 ---
 
-# 19. Remove video
+# 19. Remover vídeo
 
 ## `-vn`
 
-Does not produce video.
+Não gera vídeo.
 
 ```bash
 ffmpeg \
@@ -576,11 +576,11 @@ ffmpeg \
 
 ---
 
-# 20. Remove audio
+# 20. Remover áudio
 
 ## `-an`
 
-Does not produce audio.
+Não gera áudio.
 
 ```bash
 ffmpeg \
@@ -589,11 +589,11 @@ ffmpeg \
   output.mp4
 ```
 
-Very useful for separating video and audio processing.
+Muito útil para separar processamento de vídeo e áudio.
 
 ---
 
-# 21. Extract audio
+# 21. Extrair áudio
 
 ```bash
 ffmpeg \
@@ -605,7 +605,7 @@ ffmpeg \
 
 ---
 
-# 22. Extract image/frame
+# 22. Extrair imagem/frame
 
 ```bash
 ffmpeg \
@@ -617,7 +617,7 @@ ffmpeg \
 
 ---
 
-# 23. Number of frames
+# 23. Número de frames
 
 ## `-frames:v`
 
@@ -625,19 +625,19 @@ ffmpeg \
 -frames:v 1
 ```
 
-Produces one frame.
+Gera um frame.
 
 ```bash
 -frames:v 100
 ```
 
-Produces 100 frames.
+Gera 100 frames.
 
 ---
 
-# 24. Filters
+# 24. Filtros
 
-Filters are one of the most important parts of FFmpeg for your renderer.
+Os filtros são uma das partes mais importantes do FFmpeg para seu renderer.
 
 ## `-vf`
 
@@ -647,7 +647,7 @@ Video Filter.
 -vf "scale=1920:1080"
 ```
 
-It is an alias of:
+É um alias de:
 
 ```bash
 -filter:v
@@ -655,19 +655,19 @@ It is an alias of:
 
 ---
 
-# 25. Scale video
+# 25. Escalar vídeo
 
 ```bash
 -vf "scale=1920:1080"
 ```
 
-Keep aspect ratio:
+Manter proporção:
 
 ```bash
 -vf "scale=1920:-1"
 ```
 
-Or:
+Ou:
 
 ```bash
 -vf "scale=-1:1080"
@@ -681,13 +681,13 @@ Or:
 -vf "crop=1920:1080"
 ```
 
-Format:
+Formato:
 
 ```text
 crop=width:height:x:y
 ```
 
-Example:
+Exemplo:
 
 ```bash
 -vf "crop=1920:1080:0:0"
@@ -695,17 +695,17 @@ Example:
 
 ---
 
-# 27. Rotate
+# 27. Rotacionar
 
 ```bash
 -vf "transpose=1"
 ```
 
-Other values depend on the desired direction.
+Outros valores dependem da direção desejada.
 
 ---
 
-# 28. FPS with filter
+# 28. FPS com filtro
 
 ```bash
 -vf "fps=30"
@@ -721,7 +721,7 @@ Other values depend on the desired direction.
 
 ---
 
-# 30. Saturation
+# 30. Saturação
 
 ```bash
 -vf "eq=saturation=1.5"
@@ -729,7 +729,7 @@ Other values depend on the desired direction.
 
 ---
 
-# 31. Brightness/contrast
+# 31. Brilho/contraste
 
 ```bash
 -vf "eq=brightness=0.1:contrast=1.2"
@@ -737,26 +737,26 @@ Other values depend on the desired direction.
 
 ---
 
-# 32. Text
+# 32. Texto
 
-One of the most important filters for your tool:
+Um dos filtros mais importantes para sua ferramenta:
 
 ```bash
 -vf "drawtext=text='Hello World':fontsize=60:x=100:y=100"
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
   -i input.mp4 \
-  -vf "drawtext=text='My video':fontsize=60:x=100:y=100" \
+  -vf "drawtext=text='Meu vídeo':fontsize=60:x=100:y=100" \
   output.mp4
 ```
 
 ---
 
-# 33. Text with font file
+# 33. Texto com arquivo de fonte
 
 ```bash
 -vf "drawtext=fontfile=/path/font.ttf:text='Hello':fontsize=60:x=100:y=100"
@@ -764,9 +764,9 @@ ffmpeg \
 
 ---
 
-# 34. Video fade
+# 34. Fade de vídeo
 
-The `fade` filter changes the opacity of **one** stream toward a color (black by default). It does not mix two scenes.
+O filtro `fade` altera a opacidade de **um** stream em direção a uma cor (preto, por padrão). Não mistura duas cenas.
 
 Fade in:
 
@@ -780,16 +780,16 @@ Fade out:
 -vf "fade=t=out:st=9:d=1"
 ```
 
-Where:
+Onde:
 
 ```text
-t  = type (`in` or `out`)
-st = start
-d  = duration
-c  = color (optional; `black` in Patchwork)
+t  = tipo (`in` ou `out`)
+st = início
+d  = duração
+c  = cor (opcional; `black` no Patchwork)
 ```
 
-In Patchwork, `transition.type = "fade"` does **not** use `xfade`. It is a fade-out of the previous scene + fade-in of the next one + `concat`:
+No Patchwork, `transition.type = "fade"` **não** usa `xfade`. É fade-out da cena anterior + fade-in da seguinte + `concat`:
 
 ```text
 A ─────────╲
@@ -803,11 +803,11 @@ A ─────────╲
 [fo1][fi1]concat=n=2:v=1:a=0[vout]
 ```
 
-To mix pixels from both scenes, use `xfade` (section 89).
+Para misturar pixels das duas cenas, use `xfade` (seção 89).
 
 ---
 
-# 35. Audio fade
+# 35. Fade de áudio
 
 ## `-af`
 
@@ -827,29 +827,29 @@ Fade out:
 
 # 36. Zoom
 
-FFmpeg does not have a simple universal command called "zoom". You usually create the effect through filters such as `zoompan`, `scale`, `crop`, and expressions.
+O FFmpeg não possui simplesmente um comando universal chamado "zoom". Normalmente você cria o efeito através de filtros como `zoompan`, `scale`, `crop` e expressões.
 
-Conceptual example:
+Exemplo conceitual:
 
 ```bash
 -vf "zoompan=z='min(zoom+0.0015,1.5)':d=150"
 ```
 
-This is especially useful for:
+Isso é especialmente útil para:
 
 ```text
-image
+imagem
    ↓
-slow zoom
+zoom lento
    ↓
-video
+vídeo
 ```
 
 ---
 
-# 37. Image as video
+# 37. Imagem como vídeo
 
-An image can be turned into a sequence of frames.
+Uma imagem pode ser transformada em uma sequência de frames.
 
 ```bash
 ffmpeg \
@@ -859,7 +859,7 @@ ffmpeg \
   output.mp4
 ```
 
-This creates approximately:
+Isso cria aproximadamente:
 
 ```text
 image.jpg
@@ -870,14 +870,14 @@ frame
 frame
 ...
    ↓
-5 seconds
+5 segundos
    ↓
 video.mp4
 ```
 
 ---
 
-# 38. Image sequence
+# 38. Imagens em sequência
 
 ```bash
 ffmpeg \
@@ -886,7 +886,7 @@ ffmpeg \
   output.mp4
 ```
 
-With:
+Com:
 
 ```text
 image-001.png
@@ -897,9 +897,9 @@ image-003.png
 
 ---
 
-# 39. Concatenate videos
+# 39. Concatenar vídeos
 
-Method based on the `concat` demuxer:
+Método baseado no demuxer `concat`:
 
 ```text
 videos.txt
@@ -911,7 +911,7 @@ file '02.mp4'
 file '03.mp4'
 ```
 
-Command:
+Comando:
 
 ```bash
 ffmpeg \
@@ -922,25 +922,25 @@ ffmpeg \
   output.mp4
 ```
 
-When the files are not compatible for stream copy, re-encoding may be required.
+Quando os arquivos não são compatíveis para stream copy, pode ser necessário reencodar.
 
 ---
 
 # 40. `-filter_complex`
 
-One of the most important options for a Video Engine.
+Uma das opções mais importantes para um Video Engine.
 
-Use it when you need:
+Use quando você precisa de:
 
-- multiple inputs;
-- multiple outputs;
+- múltiplas entradas;
+- múltiplas saídas;
 - overlays;
-- composition;
-- concatenation via filters;
-- mixing;
-- complex pipelines.
+- composição;
+- concatenação via filtros;
+- mixagem;
+- pipelines complexos.
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -952,15 +952,15 @@ ffmpeg \
 
 ---
 
-# 41. Labels in `filter_complex`
+# 41. Labels no `filter_complex`
 
-Example:
+Exemplo:
 
 ```bash
 -filter_complex "[0:v]scale=1920:1080[video]"
 ```
 
-Here:
+Aqui:
 
 ```text
 0:v
@@ -972,13 +972,13 @@ scale
 [video]
 ```
 
-You can use `[video]` later.
+Você pode utilizar `[video]` posteriormente.
 
 ---
 
 # 42. Overlay
 
-Place an image over a video:
+Colocar uma imagem sobre um vídeo:
 
 ```bash
 ffmpeg \
@@ -988,7 +988,7 @@ ffmpeg \
   output.mp4
 ```
 
-Structure:
+Estrutura:
 
 ```text
 video ───────┐
@@ -998,19 +998,19 @@ logo ────────┘
 
 ---
 
-# 43. Centered overlay
+# 43. Overlay centralizado
 
 ```bash
 -filter_complex "[0:v][1:v]overlay=(W-w)/2:(H-h)/2"
 ```
 
-Where:
+Onde:
 
 ```text
-W = width of the main video
-H = height of the main video
-w = overlay width
-h = overlay height
+W = largura do vídeo principal
+H = altura do vídeo principal
+w = largura do overlay
+h = altura do overlay
 ```
 
 ---
@@ -1021,11 +1021,11 @@ h = overlay height
 -filter_complex "[0:v][1:v]overlay=W-w-20:H-h-20"
 ```
 
-Places the second video in the bottom-right corner.
+Coloca o segundo vídeo no canto inferior direito.
 
 ---
 
-# 45. Mix audio
+# 45. Mixar áudio
 
 ## `amix`
 
@@ -1033,7 +1033,7 @@ Places the second video in the bottom-right corner.
 -filter_complex "[0:a][1:a]amix=inputs=2"
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1051,29 +1051,29 @@ ffmpeg \
 -af "volume=0.5"
 ```
 
-Half the volume.
+Metade do volume.
 
 ```bash
 -af "volume=2"
 ```
 
-Double.
+Dobro.
 
 ---
 
-# 47. Audio delay
+# 47. Delay de áudio
 
 ```bash
 -af "adelay=1000|1000"
 ```
 
-Adds approximately 1 second of delay to the channels.
+Adiciona aproximadamente 1 segundo de delay aos canais.
 
 ---
 
-# 48. Audio normalization
+# 48. Normalização de áudio
 
-A very useful filter:
+Um filtro bastante útil:
 
 ```bash
 -af "loudnorm"
@@ -1081,16 +1081,16 @@ A very useful filter:
 
 ---
 
-# 49. Concatenation through a filter
+# 49. Concatenação através de filtro
 
-For more complex composition:
+Para composição mais complexa:
 
 ```bash
 -filter_complex \
 "[0:v][1:v][2:v]concat=n=3:v=1:a=0[outv]"
 ```
 
-Then:
+Depois:
 
 ```bash
 -map "[outv]"
@@ -1098,9 +1098,9 @@ Then:
 
 ---
 
-# 50. Multiple inputs + concat
+# 50. Múltiplas entradas + concat
 
-Conceptually:
+Conceitualmente:
 
 ```text
 Input 0 ──┐
@@ -1108,7 +1108,7 @@ Input 1 ──┼──► filter_complex ──► output
 Input 2 ──┘
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1123,9 +1123,9 @@ ffmpeg \
 
 ---
 
-# 51. Map filter output
+# 51. Mapear saída do filtro
 
-If the filter produces:
+Se o filtro produz:
 
 ```text
 [outv]
@@ -1137,7 +1137,7 @@ Use:
 -map "[outv]"
 ```
 
-For audio:
+Para áudio:
 
 ```bash
 -map "[outa]"
@@ -1145,27 +1145,27 @@ For audio:
 
 ---
 
-# 52. Metadata / file information
+# 52. Metadata / informações do arquivo
 
 ```bash
 ffmpeg -i video.mp4
 ```
 
-For information more suitable for automation, also use:
+Para informações mais apropriadas a automação, utilize também:
 
 ```bash
 ffprobe video.mp4
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffprobe -v quiet -print_format json -show_format -show_streams video.mp4
 ```
 
-This is extremely useful in your project.
+Isso é extremamente útil no seu projeto.
 
-Your Node process can run:
+Seu Node poderá executar:
 
 ```text
 ffprobe
@@ -1175,7 +1175,7 @@ JSON
 VideoMetadata
 ```
 
-And discover:
+E descobrir:
 
 ```json
 {
@@ -1189,19 +1189,19 @@ And discover:
 
 ---
 
-# 53. Check available codecs
+# 53. Verificar codecs disponíveis
 
 ```bash
 ffmpeg -codecs
 ```
 
-Encoders only:
+Somente encoders:
 
 ```bash
 ffmpeg -encoders
 ```
 
-Decoders only:
+Somente decoders:
 
 ```bash
 ffmpeg -decoders
@@ -1209,25 +1209,25 @@ ffmpeg -decoders
 
 ---
 
-# 54. Check filters
+# 54. Verificar filtros
 
 ```bash
 ffmpeg -filters
 ```
 
-Specific information:
+Informação específica:
 
 ```bash
 ffmpeg -h filter=scale
 ```
 
-Or:
+Ou:
 
 ```bash
 ffmpeg -h filter=drawtext
 ```
 
-Or:
+Ou:
 
 ```bash
 ffmpeg -h filter=xfade
@@ -1235,7 +1235,7 @@ ffmpeg -h filter=xfade
 
 ---
 
-# 55. Check formats
+# 55. Verificar formatos
 
 ```bash
 ffmpeg -formats
@@ -1243,7 +1243,7 @@ ffmpeg -formats
 
 ---
 
-# 56. Check pixel formats
+# 56. Verificar pixel formats
 
 ```bash
 ffmpeg -pix_fmts
@@ -1251,7 +1251,7 @@ ffmpeg -pix_fmts
 
 ---
 
-# 57. Check protocols
+# 57. Verificar protocolos
 
 ```bash
 ffmpeg -protocols
@@ -1259,33 +1259,33 @@ ffmpeg -protocols
 
 ---
 
-# 58. See help
+# 58. Ver ajuda
 
-Basic help:
+Ajuda básica:
 
 ```bash
 ffmpeg -h
 ```
 
-Full help:
+Ajuda completa:
 
 ```bash
 ffmpeg -h full
 ```
 
-Help about an encoder:
+Ajuda sobre encoder:
 
 ```bash
 ffmpeg -h encoder=libx264
 ```
 
-Help about a filter:
+Ajuda sobre filtro:
 
 ```bash
 ffmpeg -h filter=scale
 ```
 
-The official documentation also lets you inspect lists of codecs, encoders, decoders, formats, filters, and other capabilities directly from the executable.
+A documentação oficial também permite consultar listas de codecs, encoders, decoders, formatos, filtros e outras capacidades diretamente pelo executável.
 
 ---
 
@@ -1297,7 +1297,7 @@ The official documentation also lets you inspect lists of codecs, encoders, deco
 -loglevel error
 ```
 
-Common options:
+Opções comuns:
 
 ```text
 quiet
@@ -1311,23 +1311,23 @@ debug
 trace
 ```
 
-For your renderer:
+Para seu renderer:
 
 ```bash
 -loglevel error
 ```
 
-can be a good choice in production.
+pode ser interessante em produção.
 
 ---
 
-# 60. Statistics
+# 60. Estatísticas
 
 ```bash
 -stats
 ```
 
-Disable:
+Desabilitar:
 
 ```bash
 -nostats
@@ -1335,15 +1335,15 @@ Disable:
 
 ---
 
-# 61. Progress for automation
+# 61. Progresso para automação
 
-An especially useful option for Node:
+Uma opção especialmente interessante para Node:
 
 ```bash
 -progress pipe:1
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1352,7 +1352,7 @@ ffmpeg \
   output.mp4
 ```
 
-This lets your Node process follow FFmpeg progress.
+Isso permite que seu Node acompanhe o progresso do FFmpeg.
 
 ---
 
@@ -1362,25 +1362,25 @@ This lets your Node process follow FFmpeg progress.
 -threads 4
 ```
 
-Or:
+Ou:
 
 ```bash
 -threads 0
 ```
 
-Depending on the codec, `0` may let the encoder choose automatically.
+Dependendo do codec, `0` pode permitir que o encoder escolha automaticamente.
 
 ---
 
 # 63. Stream copy
 
-If you do not need to re-encode:
+Se não precisa reencodar:
 
 ```bash
 -c copy
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1389,11 +1389,11 @@ ffmpeg \
   output.mkv
 ```
 
-This can be much faster because it avoids decoding/re-encoding.
+Isso pode ser muito mais rápido porque evita decodificação/re-encoding.
 
 ---
 
-# 64. Copy video only
+# 64. Copiar somente vídeo
 
 ```bash
 -c:v copy
@@ -1401,7 +1401,7 @@ This can be much faster because it avoids decoding/re-encoding.
 
 ---
 
-# 65. Copy audio only
+# 65. Copiar somente áudio
 
 ```bash
 -c:a copy
@@ -1411,7 +1411,7 @@ This can be much faster because it avoids decoding/re-encoding.
 
 # 66. Remux
 
-Change the container without re-encoding:
+Alterar container sem reencodar:
 
 ```bash
 ffmpeg \
@@ -1428,38 +1428,38 @@ ffmpeg \
 -aspect 16:9
 ```
 
-However, in a modern renderer it is usually better to work with resolution and appropriate filters instead of simply forcing aspect-ratio metadata.
+Entretanto, em um renderer moderno, normalmente é melhor trabalhar com resolução e filtros apropriados em vez de simplesmente forçar metadata de aspect ratio.
 
 ---
 
 # 68. Metadata
 
-Set metadata:
+Definir metadata:
 
 ```bash
--metadata title="My video"
+-metadata title="Meu vídeo"
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
   -i input.mp4 \
-  -metadata title="My video" \
+  -metadata title="Meu vídeo" \
   output.mp4
 ```
 
 ---
 
-# 69. Fast start for MP4
+# 69. Fast start para MP4
 
-Very useful for files intended for progressive/web playback:
+Muito útil para arquivos destinados à reprodução progressiva/web:
 
 ```bash
 -movflags +faststart
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1472,7 +1472,7 @@ ffmpeg \
 
 ---
 
-# 70. YouTube video example
+# 70. Exemplo de vídeo para YouTube
 
 ```bash
 ffmpeg \
@@ -1489,7 +1489,7 @@ ffmpeg \
 
 ---
 
-# 71. Example: image + narration
+# 71. Exemplo: imagem + narração
 
 ```bash
 ffmpeg \
@@ -1505,7 +1505,7 @@ ffmpeg \
 
 ---
 
-# 72. Example: video + narration
+# 72. Exemplo: vídeo + narração
 
 ```bash
 ffmpeg \
@@ -1520,7 +1520,7 @@ ffmpeg \
 
 ---
 
-# 73. Example: video + music
+# 73. Exemplo: vídeo + música
 
 ```bash
 ffmpeg \
@@ -1536,7 +1536,7 @@ ffmpeg \
 
 ---
 
-# 74. Example: narration + music
+# 74. Exemplo: narração + música
 
 ```bash
 ffmpeg \
@@ -1550,7 +1550,7 @@ ffmpeg \
 
 ---
 
-# 75. Example: video + logo + audio
+# 75. Exemplo: vídeo + logo + áudio
 
 ```bash
 ffmpeg \
@@ -1568,7 +1568,7 @@ ffmpeg \
 
 ---
 
-# 76. Example: vertical video
+# 76. Exemplo: vídeo vertical
 
 ```bash
 ffmpeg \
@@ -1579,11 +1579,11 @@ ffmpeg \
   output.mp4
 ```
 
-For Shorts/Reels/TikTok, you will usually want a crop/scale strategy that preserves framing instead of simply stretching the image.
+Para Shorts/Reels/TikTok, normalmente você vai querer uma estratégia de crop/scale que preserve o enquadramento em vez de simplesmente deformar a imagem.
 
 ---
 
-# 77. 16:9 format
+# 77. Formato 16:9
 
 ```text
 1920 × 1080
@@ -1592,7 +1592,7 @@ For Shorts/Reels/TikTok, you will usually want a crop/scale strategy that preser
 
 ---
 
-# 78. 9:16 format
+# 78. Formato 9:16
 
 ```text
 1080 × 1920
@@ -1601,7 +1601,7 @@ For Shorts/Reels/TikTok, you will usually want a crop/scale strategy that preser
 
 ---
 
-# 79. 1:1 format
+# 79. Formato 1:1
 
 ```text
 1080 × 1080
@@ -1609,7 +1609,7 @@ For Shorts/Reels/TikTok, you will usually want a crop/scale strategy that preser
 
 ---
 
-# 80. 4:5 format
+# 80. Formato 4:5
 
 ```text
 1080 × 1350
@@ -1619,7 +1619,7 @@ For Shorts/Reels/TikTok, you will usually want a crop/scale strategy that preser
 
 # 81. Stream specifiers
 
-The modifiers:
+Os modificadores:
 
 ```text
 :v
@@ -1628,39 +1628,39 @@ The modifiers:
 :d
 ```
 
-can be combined with indexes.
+podem ser combinados com índices.
 
-Examples:
+Exemplos:
 
 ```bash
 -c:v libx264
 ```
 
-All videos.
+Todos os vídeos.
 
 ```bash
 -c:a aac
 ```
 
-All audios.
+Todos os áudios.
 
 ```bash
 -c:v:0 libx264
 ```
 
-First video.
+Primeiro vídeo.
 
 ```bash
 -c:a:1 aac
 ```
 
-Second audio.
+Segundo áudio.
 
 ---
 
-# 82. Conceptual composition of a command
+# 82. Composição conceitual de um comando
 
-A complex command can follow this structure:
+Um comando complexo pode seguir esta estrutura:
 
 ```text
 ffmpeg
@@ -1686,7 +1686,7 @@ OUTPUT OPTIONS
 output.mp4
 ```
 
-Example:
+Exemplo:
 
 ```bash
 ffmpeg \
@@ -1708,19 +1708,19 @@ ffmpeg \
 
 ---
 
-# 83. How this becomes a Video Engine
+# 83. Como isso vira um Video Engine
 
-**Patchwork** already follows this path: Composition JSON → RenderPlan → `FfmpegCommandBuilder` → `spawn(ffmpeg)`. The public API is not a list of flags; it is the composition JSON (scenes, `transition`, audio, text, overlay). See the [README](README.md) and sections 89–91.
+O **Patchwork** já segue este caminho: Composition JSON → RenderPlan → `FfmpegCommandBuilder` → `spawn(ffmpeg)`. A API pública não é uma lista de flags; é o JSON de composição (cenas, `transition`, áudio, texto, overlay). Ver [README](README.md) e as seções 89–91.
 
-I do not recommend making the API:
+Não recomendo que a API seja:
 
 ```ts
 render(["-i", "video.mp4", "-filter_complex", "..."]);
 ```
 
-That would turn the system into just an FFmpeg wrapper.
+Isso faria o sistema virar apenas um wrapper do FFmpeg.
 
-Instead, Patchwork describes intent:
+Em vez disso, o Patchwork descreve intenção:
 
 ```json
 {
@@ -1739,7 +1739,7 @@ Instead, Patchwork describes intent:
 }
 ```
 
-The engine turns that into:
+O engine transforma isso em:
 
 ```text
 Composition
@@ -1757,16 +1757,16 @@ MP4
 
 ---
 
-# 84. Patchwork architecture
+# 84. Arquitetura do Patchwork
 
-The actual tree (not a future sketch):
+A árvore real (não um esboço futuro):
 
 ```text
 src/
-├── index.ts       public API
-├── api/           render() and parseComposition()
+├── index.ts       API pública
+├── api/           render() e parseComposition()
 ├── composition/   parser, visualDuration, AudioTimeline
-├── source/        file / asset / url → local path
+├── source/        file / asset / url → path local
 ├── interfaces/    Scene, Transition, RenderPlan
 ├── renderer/      Renderer, buildRenderPlan
 ├── media/         MediaResolver, FontResolver, rasterizeText
@@ -1774,13 +1774,13 @@ src/
                    FfmpegCommandBuilder, FfmpegExecutor
 ```
 
-`Transition` in the domain is only `{ type, duration }`. The `xfade` / `fade` syntax is born in `FfmpegCommandBuilder`.
+`Transition` no domínio é só `{ type, duration }`. A sintaxe `xfade` / `fade` nasce no `FfmpegCommandBuilder`.
 
 ---
 
-# 85. Public API
+# 85. API pública
 
-The package entry point:
+A entrada do pacote:
 
 ```ts
 import { render } from '@caiorafael/patchwork'
@@ -1788,7 +1788,7 @@ import { render } from '@caiorafael/patchwork'
 await render({ composition, assets, output })
 ```
 
-Internally:
+Internamente:
 
 ```text
               Composition
@@ -1813,11 +1813,11 @@ Internally:
 
 ---
 
-# 86. Commands you should master first
+# 86. Comandos que você deve dominar primeiro
 
-For your project, do not try to learn everything at once.
+Para o seu projeto, não tente aprender tudo de uma vez.
 
-Priority:
+Prioridade:
 
 ```text
 1. -i
@@ -1850,9 +1850,9 @@ Priority:
 
 ---
 
-# 87. The most important part for your renderer
+# 87. O mais importante para seu renderer
 
-The four fundamental concepts will be:
+Os quatro conceitos fundamentais serão:
 
 ```text
 INPUTS
@@ -1864,7 +1864,7 @@ MAP
 ENCODING
 ```
 
-Or:
+Ou:
 
 ```text
 ┌─────────────┐
@@ -1912,7 +1912,7 @@ Or:
 
 ---
 
-# 88. Essential diagnostic commands
+# 88. Comandos de diagnóstico indispensáveis
 
 ```bash
 ffmpeg -version
@@ -1962,9 +1962,9 @@ ffprobe -v quiet -print_format json -show_format -show_streams input.mp4
 
 # 89. Crossfade (`xfade`)
 
-`xfade` mixes **two** video streams. It is the filter for `transition.type = "crossfade"` in Patchwork.
+`xfade` mistura **dois** streams de vídeo. É o filtro do `transition.type = "crossfade"` no Patchwork.
 
-Do not confuse it with the `fade` filter (section 34), which only changes one stream toward black.
+Não confundir com o filtro `fade` (seção 34), que só altera um stream em direção ao preto.
 
 ```text
 A ─────────────
@@ -1974,27 +1974,27 @@ A ─────────────
      overlap
 ```
 
-Help:
+Ajuda:
 
 ```bash
 ffmpeg -h filter=xfade
 ```
 
-Parameters used by the engine:
+Parâmetros usados pelo engine:
 
 ```text
-transition = visual preset (`fade` in FFmpeg = dissolve; this is not the JSON "fade")
-duration   = mix duration, in seconds
-offset     = instant on stream A when the mix starts
+transition = preset visual (`fade` no FFmpeg = dissolve; não é o JSON "fade")
+duration   = duração da mistura, em segundos
+offset     = instante no stream A em que a mistura começa
 ```
 
-Both sides need the same resolution, FPS, pixel format, and time base. That is why Patchwork applies `settb=AVTB` immediately before `xfade`.
+Os dois lados precisam da mesma resolução, FPS, pixel format e time base. Por isso o Patchwork aplica `settb=AVTB` imediatamente antes do `xfade`.
 
-Example (A = 5s, B = 5s, crossfade = 1s):
+Exemplo (A = 5s, B = 5s, crossfade = 1s):
 
 ```text
 offset = 5 - 1 = 4
-final duration = 5 + 5 - 1 = 9
+duração final = 5 + 5 - 1 = 9
 ```
 
 ```bash
@@ -2003,41 +2003,41 @@ final duration = 5 + 5 - 1 = 9
 [vouta][voutb]xfade=transition=fade:duration=1:offset=4[vout]
 ```
 
-`offset = 5` would be wrong: the transition would start after the effective end of A.
+`offset = 5` estaria errado: a transição começaria depois do fim efetivo de A.
 
 ---
 
-# 90. Patchwork filter graph
+# 90. Filter graph do Patchwork
 
-`FfmpegCommandBuilder` builds **one** `-filter_complex` per render. There are no intermediate video files.
+O `FfmpegCommandBuilder` monta **um** `-filter_complex` por render. Não há arquivos intermediários de vídeo.
 
-Order:
+Ordem:
 
 ```text
 input
-  image: -loop 1 -t N
-  video:  -t N  |  -ss mediaStart -t N  |  loop: -ss mediaStart -t available
-  → setpts=PTS-STARTPTS when mediaStart > 0, loop, or freeze
-  → loop: split+concat of the available segment (does not use -stream_loop with mediaStart)
+  imagem: -loop 1 -t N
+  vídeo:  -t N  |  -ss mediaStart -t N  |  loop: -ss mediaStart -t disponível
+  → setpts=PTS-STARTPTS quando mediaStart > 0, loop ou freeze
+  → loop: split+concat do trecho disponível (não usa -stream_loop com mediaStart)
   → freeze: tpad=stop_mode=clone + trim=duration=N + setpts
-  → crop? (media pixels)
+  → crop? (pixels da mídia)
   → canvas fit (scale W:H force_original_aspect_ratio=decrease)
-  → setpts=PTS-STARTPTS (path with placement; aligns t to the canvas)
-  → transform scale/zoom + position/pan (if any)
-  → pad on the canvas  OR  overlay on color=black W×H
+  → setpts=PTS-STARTPTS (caminho com placement; alinha t ao canvas)
+  → transform scale/zoom + position/pan (se houver)
+  → pad no canvas  OU  overlay em color=black W×H
   → setsar + fps + format=yuv420p
-  → effects (non-default values only; canonical order)
+  → effects (só valores não-default; ordem canônica)
   → transition (concat | fade+concat | xfade)
   → overlay
-  → text (drawtext with wrap/align/stroke/shadow/box, or PNG in the bounding box with the same intent)
-  → audio (atrim, adelay, amix, or anullsrc)
-  → audio (atrim, adelay, amix, or anullsrc)
-  → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURATION -pix_fmt yuv420p
+  → texto (drawtext com wrap/align/stroke/shadow/box, ou PNG no bounding box com a mesma intenção)
+  → áudio (atrim, adelay, amix ou anullsrc)
+  → áudio (atrim, adelay, amix ou anullsrc)
+  → -map [vout] -map [aout] -c:v libx264 -c:a aac -t DURAÇÃO -pix_fmt yuv420p
 ```
 
-`mediaStart` is a seek in the file (`-ss` before `-i`). It does not enter the `xfade` offset or `scenePlacements`. After the seek, `setpts=PTS-STARTPTS` prevents the original PTS from leaking into the global timeline. `shortMedia: error` (default) is validated in `Renderer` with `ffprobe` of the container duration — there is no resolution probe.
+`mediaStart` é seek no arquivo (`-ss` antes de `-i`). Não entra no `xfade` offset nem em `scenePlacements`. Depois do seek, `setpts=PTS-STARTPTS` impede que o PTS original vaze para a timeline global. `shortMedia: error` (default) é validado no `Renderer` com `ffprobe` da duração do container — não há probe de resolução.
 
-Normalization of each scene without placement (`scale`/`zoom`/`x`/`y`/`pan`):
+Normalização de cada cena sem placement (`scale`/`zoom`/`x`/`y`/`pan`):
 
 ```text
 scale=W:H:force_original_aspect_ratio=decrease,
@@ -2047,37 +2047,37 @@ fps=F,
 format=yuv420p
 ```
 
-With placement, `pad` is replaced by an overlay on the black canvas. The frame that reaches the transition remains W×H, SAR 1, fps F, yuv420p. The transform `scale` (`iw*S:ih*S` or a `t` expression) is not the same `scale` as canvas normalization.
+Com placement, o `pad` é substituído por overlay no canvas preto. O frame que chega na transição continua W×H, SAR 1, fps F, yuv420p. `scale` da transformação (`iw*S:ih*S` ou expressão de `t`) não é o mesmo `scale` da normalização do canvas.
 
-Scene effects (static) are translated by `EffectFilter` **after** that normalization and **before** concat/`fade`/`xfade`. The order of properties in the JSON is ignored. Defaults do not emit a filter.
+Effects da cena (estáticos) são traduzidos pelo `EffectFilter` **depois** dessa normalização e **antes** de concat/`fade`/`xfade`. A ordem das propriedades no JSON é ignorada. Defaults não emitem filtro.
 
 ```text
-opacity     → lutyuv (YUV mix with black; 1 = identity)
-brightness  → eq=brightness (API 0 = original; same scale as `eq`, [-1, 1])
+opacity     → lutyuv (mistura YUV com preto; 1 = identidade)
+brightness  → eq=brightness (API 0 = original; mesma escala do `eq`, [-1, 1])
 contrast    → eq=contrast (API 1 = original)
 saturation  → eq=saturation (API 1 = original)
-grayscale   → format=gbrp,colorchannelmixer (Rec.601 mix), format=yuv420p
-sepia       → format=gbrp,colorchannelmixer (classic matrix 0.393/0.769/…), format=yuv420p
-blur        → boxblur=lr=R:lp=1:cr=R:cp=1  (R = radius in pixels)
+grayscale   → format=gbrp,colorchannelmixer (mistura Rec.601), format=yuv420p
+sepia       → format=gbrp,colorchannelmixer (matriz clássica 0.393/0.769/…), format=yuv420p
+blur        → boxblur=lr=R:lp=1:cr=R:cp=1  (R = raio em pixels)
 ```
 
-Active `grayscale` and `sepia` share one RGB conversion. `opacity` does not use alpha in concat: the result is the scene over the black canvas. Independent text and overlay do not go through these filters.
+`grayscale` e `sepia` ativos compartilham uma conversão RGB. `opacity` não usa alpha no concat: o resultado é a cena sobre o canvas preto. Texto e overlay independentes não passam por esses filtros.
 
-Animation (`{ from, to }`) uses FFmpeg `t`, with `t_norm = min(max(if(isnan(t),0,t)/duration,0),1)`. Without `easing` (or `easing: "linear"`), the progression is `t_norm`. The other curves become expressions: `pow(t_norm,2)` (`ease-in`), `1-pow(1-t_norm,2)` (`ease-out`), `if(lt(t_norm,0.5),…)` (`ease-in-out`). Animated scale needs `eval=frame`. Animated dimensions are forced to even values with `trunc(iw*…/2)*2`. `setpts=PTS-STARTPTS` on the content makes `t = 0` on the first frame (needed for videos whose PTS does not start at 0). Node does not generate intermediate frames.
+Animação (`{ from, to }`) usa `t` do FFmpeg, com `t_norm = min(max(if(isnan(t),0,t)/duration,0),1)`. Sem `easing` (ou `easing: "linear"`), a progressão é `t_norm`. As outras curvas viram expressions: `pow(t_norm,2)` (`ease-in`), `1-pow(1-t_norm,2)` (`ease-out`), `if(lt(t_norm,0.5),…)` (`ease-in-out`). Scale animado precisa de `eval=frame`. Dimensões animadas são forçadas a pares com `trunc(iw*…/2)*2`. `setpts=PTS-STARTPTS` no conteúdo faz `t = 0` no primeiro frame (necessário em vídeos cujo PTS não começa em 0). O Node não gera frames intermediários.
 
-Without `transition` on the scenes, the `[v0][v1]…` pads go to `concat`.
+Sem `transition` nas cenas, as pads `[v0][v1]…` vão para `concat`.
 
-With `crossfade`, the offset is the accumulated duration of the visual timeline minus the transition duration — not a hardcoded value.
+Com `crossfade`, o offset é a duração acumulada da timeline visual menos a duração da transição — não um valor hardcoded.
 
-With `fade`, fade-out on the previous scene, fade-in on the next one, then `concat`. Total duration does **not** shrink.
+Com `fade`, fade-out na cena anterior, fade-in na seguinte, depois `concat`. A duração total **não** encolhe.
 
-Audio, text, and overlay do **not** receive `xfade` / `fade`. `keepAudio` and scene audio use the scene's visual start (in a crossfade, the original audio enters the overlap). The video's `mediaStart` does not change the `atrim` / `adelay` of those clips.
+Áudio, texto e overlay **não** recebem `xfade` / `fade`. `keepAudio` e áudio de cena usam o start visual da cena (no crossfade, o áudio original entra no overlap). `mediaStart` do vídeo não altera o `atrim` / `adelay` desses clips.
 
 ---
 
-# 91. Verify a render
+# 91. Conferir um render
 
-After rendering a composition with crossfade:
+Depois de renderizar uma composition com crossfade:
 
 ```bash
 ffprobe -v error \
@@ -2088,8 +2088,8 @@ ffprobe -v error \
   /path/output.mp4
 ```
 
-Expected for `compositions/crossfade.json` (5s + 5s, T=1s): duration **9s**, 1920×1080, 25 fps, `yuv420p`.
+Esperado para `compositions/crossfade.json` (5s + 5s, T=1s): duração **9s**, 1920×1080, 25 fps, `yuv420p`.
 
-For `compositions/fade.json`: duration **10s**, with a black instant at the cut (around t=5s).
+Para `compositions/fade.json`: duração **10s**, com um instante preto no corte (por volta de t=5s).
 
 ---

@@ -1,6 +1,8 @@
 # Render pipeline
 
-O Patchwork orquestra o FFmpeg. O Node não processa frames.
+**English** | [Português](pt-BR/render-pipeline.md)
+
+Patchwork orchestrates FFmpeg. Node does not process frames.
 
 ```text
 render({ composition, assets, output })
@@ -8,8 +10,8 @@ render({ composition, assets, output })
 CompositionParser
     ↓
 Renderer.prepare
-    ├── SourceResolver → arquivo local (file / asset / url)
-    ├── MediaResolver  → path já resolvido
+    ├── SourceResolver → local file (file / asset / url)
+    ├── MediaResolver  → already-resolved path
     ↓
 RenderPlan + RenderContext
     ↓
@@ -22,45 +24,45 @@ FfmpegExecutor (spawn)
 cleanup
 ```
 
-A API pública (`render`, pacote npm `@caiorafael/patchwork`) é o único fluxo de entrada. Ela parseia o objeto, aplica `output` e `assets`, e chama o mesmo `Renderer` interno.
+The public API (`render`, npm package `@caiorafael/patchwork`) is the only entry point. It parses the object, applies `output` and `assets`, and calls the same internal `Renderer`.
 
-## Ciclo de vida
+## Lifecycle
 
-1. **parse** — `CompositionParser` valida o objeto em memória e aplica defaults.
-2. **planning** — `SourceResolver` materializa `file` / `asset` / `url`; `buildRenderPlan` monta tracks.
-3. **preparing** — probe de duração, rasterização de texto (se não houver `drawtext`), comando FFmpeg.
-4. **rendering** — `spawn` do FFmpeg. O arquivo é escrito em `name.tmp.mp4` (extensão `.mp4` para o muxer).
-5. **finalizing** — rename atômico para o caminho final.
-6. **completed** / **cancelled** / **failed** — cleanup do `RenderContext`.
+1. **parse** — `CompositionParser` validates the in-memory object and applies defaults.
+2. **planning** — `SourceResolver` materializes `file` / `asset` / `url`; `buildRenderPlan` builds tracks.
+3. **preparing** — duration probe, text rasterization (if `drawtext` is missing), FFmpeg command.
+4. **rendering** — FFmpeg `spawn`. The file is written to `name.tmp.mp4` (`.mp4` extension for the muxer).
+5. **finalizing** — atomic rename to the final path.
+6. **completed** / **cancelled** / **failed** — `RenderContext` cleanup.
 
-Por baixo, `prepare` e `runPrepared` continuam separados. A API pública executa os dois.
+Under the hood, `prepare` and `runPrepared` stay separate. The public API runs both.
 
 ## RenderContext
 
-Cada render ganha um diretório isolado:
+Each render gets an isolated directory:
 
 ```text
 /tmp/patchwork-render-XXXXXX/
   text/
   intermediate/
-  downloads/          # arquivos baixados de source.type = url
+  downloads/          # files downloaded from source.type = url
 ```
 
-Dois renders podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez. A aplicação que quiser lote cria essa concorrência do lado de fora.
+Two renders can run at the same time without colliding. A single `Renderer` handles one render at a time. An app that wants batches creates that concurrency outside the core.
 
 ## Temporary files
 
-Textos rasterizados (fallback PNG) vão para `context.textDir`. Downloads de URL vão para `context.downloadsDir`. Sucesso, erro e cancelamento chamam `disposeRenderContext` e apagam o diretório inteiro.
+Rasterized texts (PNG fallback) go to `context.textDir`. URL downloads go to `context.downloadsDir`. Success, error, and cancellation call `disposeRenderContext` and delete the whole directory.
 
 ## FFmpeg
 
-- `spawn` com argumentos em array
-- stdin ignorado
-- stderr limitado (~16 KB) para erros
-- progresso lido de linhas `time=` / `fps=` / `speed=`
-- `AbortSignal` envia SIGTERM e, se preciso, SIGKILL
-- exit code ≠ 0 vira `FfmpegProcessError` com stderr
+- `spawn` with arguments in an array
+- stdin ignored
+- stderr capped (~16 KB) for errors
+- progress read from `time=` / `fps=` / `speed=` lines
+- `AbortSignal` sends SIGTERM and, if needed, SIGKILL
+- exit code ≠ 0 becomes `FfmpegProcessError` with stderr
 
 ## Output
 
-O caminho final vem de `render({ output })`. O MP4 só aparece depois do exit 0. Um render interrompido não deixa o arquivo de saída pela metade; o staging `.tmp` é apagado.
+The final path comes from `render({ output })`. The MP4 only appears after exit 0. An interrupted render does not leave a half-written output file; the staging `.tmp` is deleted.

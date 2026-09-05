@@ -1,6 +1,8 @@
-# Progresso
+# Progress
 
-O engine expõe progresso por callback na API pública (`pnpm add @caiorafael/patchwork`).
+**English** | [Português](pt-BR/progress.md)
+
+The engine exposes progress through a callback on the public API (`pnpm add @caiorafael/patchwork`).
 
 ```ts
 import { render } from '@caiorafael/patchwork'
@@ -35,12 +37,12 @@ interface RenderProgress {
 }
 ```
 
-A API pública emite, nesta ordem típica: `planning` → `preparing` → `rendering` → `finalizing` → `completed`. `loading` existe no tipo, mas o parse da composition acontece antes do callback.
+The public API typically emits: `planning` → `preparing` → `rendering` → `finalizing` → `completed`. `loading` exists on the type, but composition parsing happens before the callback.
 
-## Regras
+## Rules
 
-- `progress` fica em `[0, 1]`.
-- Durante o FFmpeg, `progress` vem de `time=` no stderr dividido pela duração do vídeo. Não é inventado.
-- Antes do primeiro `time=`, o progresso permanece `0` e a fase já identifica a etapa.
-- Conclusão: `phase: "completed"`, `progress: 1`.
-- Erro ou cancelamento emitem `failed` / `cancelled` e a Promise rejeita.
+- `progress` stays in `[0, 1]`.
+- During FFmpeg, `progress` comes from `time=` on stderr divided by the video duration. It is not invented.
+- Before the first `time=`, progress stays `0` and the phase already identifies the step.
+- Completion: `phase: "completed"`, `progress: 1`.
+- Error or cancellation emit `failed` / `cancelled` and the Promise rejects.
