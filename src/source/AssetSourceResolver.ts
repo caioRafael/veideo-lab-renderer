@@ -1,15 +1,29 @@
-import type { AssetManager } from '../interfaces/asset'
+import fs from 'node:fs'
+import path from 'node:path'
 import type { AssetSource, ResolvedSource } from '../interfaces/source'
 
 export class AssetSourceResolver {
-  private readonly assetManager: AssetManager
+  private readonly assets: Record<string, string>
 
-  constructor(assetManager: AssetManager) {
-    this.assetManager = assetManager
+  constructor(assets: Record<string, string> = {}) {
+    this.assets = assets
   }
 
   async resolve(source: AssetSource): Promise<ResolvedSource> {
-    const asset = await this.assetManager.get(source.id)
-    return { path: asset.path }
+    const value = this.assets[source.id]
+    if (value === undefined || value.trim() === '') {
+      throw new Error(`Asset "${source.id}" was not found`)
+    }
+
+    const resolved = path.resolve(value)
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`Asset "${source.id}" was not found`)
+    }
+
+    if (!fs.statSync(resolved).isFile()) {
+      throw new Error(`Asset "${source.id}" is not a file`)
+    }
+
+    return { path: resolved }
   }
 }

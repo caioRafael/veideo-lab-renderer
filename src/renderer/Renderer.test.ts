@@ -3,12 +3,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
-import { LocalAssetManager } from '../asset/LocalAssetManager'
 import type { FfmpegExecutor } from '../ffmpeg/FfmpegExecutor'
 import type { Composition } from '../interfaces/composition'
 import { MediaResolver } from '../media/MediaResolver'
 import { createSourceResolver } from '../source/createSourceResolver'
-import { LocalFileStorage } from '../storage/LocalFileStorage'
 import { Renderer } from './Renderer'
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-renderer-'))
@@ -261,12 +259,8 @@ describe('Renderer', () => {
     fs.writeFileSync(outside, 'image')
     const imported = path.join(tmpRoot, 'imported.png')
     fs.writeFileSync(imported, 'image')
-    const manager = new LocalAssetManager(
-      new LocalFileStorage(path.join(tmpRoot, 'assets')),
-    )
-    const asset = await manager.import({ path: imported })
     const sourceResolver = createSourceResolver({
-      assetManager: manager,
+      assets: { hero: imported },
       download: async (_url, destPath) => {
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true })
         await fs.promises.writeFile(destPath, 'image')
@@ -288,7 +282,7 @@ describe('Renderer', () => {
         { type: 'image', source: { type: 'file', path: outside }, duration: 2 },
         {
           type: 'image',
-          source: { type: 'asset', id: asset.id },
+          source: { type: 'asset', id: 'hero' },
           duration: 2,
         },
         {
@@ -300,7 +294,7 @@ describe('Renderer', () => {
     })
 
     assert.ok(prepared.args.includes(path.resolve(outside)))
-    assert.ok(prepared.args.includes(asset.path))
+    assert.ok(prepared.args.includes(path.resolve(imported)))
     const downloaded = fs.readdirSync(prepared.context.downloadsDir)
     assert.equal(downloaded.length, 1)
     assert.ok(

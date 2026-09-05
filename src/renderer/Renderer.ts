@@ -46,6 +46,7 @@ export interface RendererOptions {
   executor?: FfmpegExecutor
   mediaDurationProbe?: MediaDurationProbe
   sourceResolver?: SourceResolver
+  assets?: Record<string, string>
 }
 
 export interface PreparedRender {
@@ -74,6 +75,7 @@ export class Renderer {
   private readonly executor: FfmpegExecutor
   private readonly mediaDurationProbe: MediaDurationProbe | undefined
   private readonly sourceResolver: SourceResolver
+  private readonly assets: Record<string, string> | undefined
   private activeContext: RenderContext | undefined
 
   constructor(options: RendererOptions) {
@@ -83,7 +85,12 @@ export class Renderer {
     this.commandBuilder = options.commandBuilder ?? new FfmpegCommandBuilder()
     this.executor = options.executor ?? new SpawnFfmpegExecutor()
     this.mediaDurationProbe = options.mediaDurationProbe
-    this.sourceResolver = options.sourceResolver ?? createSourceResolver()
+    this.assets = options.assets
+    this.sourceResolver =
+      options.sourceResolver ??
+      createSourceResolver({
+        ...(options.assets === undefined ? {} : { assets: options.assets }),
+      })
   }
 
   async prepare(
@@ -307,6 +314,7 @@ export class Renderer {
       {
         downloadDir: context.downloadsDir,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(this.assets === undefined ? {} : { assets: this.assets }),
       },
     )
     const plan = buildRenderPlan(

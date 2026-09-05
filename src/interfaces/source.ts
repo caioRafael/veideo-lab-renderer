@@ -24,6 +24,7 @@ export interface ResolvedSource {
 export interface SourceResolverContext {
   downloadDir: string
   signal?: AbortSignal
+  assets?: Record<string, string>
 }
 
 export interface SourceResolver {

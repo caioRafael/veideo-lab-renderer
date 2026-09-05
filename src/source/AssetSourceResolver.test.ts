@@ -3,8 +3,6 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
-import { LocalAssetManager } from '../asset/LocalAssetManager'
-import { LocalFileStorage } from '../storage/LocalFileStorage'
 import { AssetSourceResolver } from './AssetSourceResolver'
 
 const tmpRoot = fs.mkdtempSync(
@@ -16,29 +14,25 @@ after(() => {
 })
 
 describe('AssetSourceResolver', () => {
-  it('resolves a stored asset to its local file', async () => {
+  it('resolves a provided asset id to its local file', async () => {
     const sourcePath = path.join(tmpRoot, 'navio.jpg')
     fs.writeFileSync(sourcePath, 'image')
-    const manager = new LocalAssetManager(
-      new LocalFileStorage(path.join(tmpRoot, 'storage')),
-    )
-    const asset = await manager.import({ path: sourcePath })
-    const resolver = new AssetSourceResolver(manager)
+    const resolver = new AssetSourceResolver({
+      navio: sourcePath,
+    })
 
-    const resolved = await resolver.resolve({ type: 'asset', id: asset.id })
+    const resolved = await resolver.resolve({ type: 'asset', id: 'navio' })
 
-    assert.equal(resolved.path, asset.path)
+    assert.equal(resolved.path, path.resolve(sourcePath))
     assert.equal(fs.existsSync(resolved.path), true)
   })
 
   it('rejects an unknown asset id', async () => {
-    const resolver = new AssetSourceResolver(
-      new LocalAssetManager(new LocalFileStorage(path.join(tmpRoot, 'empty'))),
-    )
+    const resolver = new AssetSourceResolver({})
 
     await assert.rejects(
-      () => resolver.resolve({ type: 'asset', id: 'asset_missing' }),
-      /Asset "asset_missing" was not found/,
+      () => resolver.resolve({ type: 'asset', id: 'missing' }),
+      /Asset "missing" was not found/,
     )
   })
 })

@@ -93,4 +93,27 @@ describe('MediaResolver', () => {
     assert.equal(outputPath, path.join(mediaPaths.outputVideos, 'result.mp4'))
     assert.equal(fs.existsSync(mediaPaths.outputVideos), true)
   })
+
+  it('resolves an absolute output path without joining the output folder', () => {
+    const target = path.join(tmpRoot, 'exports', 'final.mp4')
+    const outputPath = resolver.resolveOutput(target)
+    assert.equal(outputPath, path.resolve(target))
+    assert.equal(fs.existsSync(path.dirname(target)), true)
+  })
+
+  it('rejects a relative source when media folders are not configured', () => {
+    const isolated = new MediaResolver({
+      outputVideos: path.join(tmpRoot, 'output'),
+    })
+
+    assert.throws(
+      () =>
+        isolated.resolveSceneSource({
+          type: 'image',
+          source: 'frame.png',
+          duration: 4,
+        }),
+      /Provide it in assets/,
+    )
+  })
 })

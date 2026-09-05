@@ -3,9 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
-import { LocalAssetManager } from '../asset/LocalAssetManager'
 import type { Composition } from '../interfaces/composition'
-import { LocalFileStorage } from '../storage/LocalFileStorage'
 import { createSourceResolver } from './createSourceResolver'
 import { materializeCompositionSources } from './materializeCompositionSources'
 
@@ -16,7 +14,7 @@ after(() => {
 })
 
 describe('materializeCompositionSources', () => {
-  it('keeps a string source unchanged', async () => {
+  it('keeps a string source unchanged when it is not in assets', async () => {
     const composition: Composition = {
       output: 'out.mp4',
       width: 64,
@@ -27,25 +25,44 @@ describe('materializeCompositionSources', () => {
 
     const materialized = await materializeCompositionSources(
       composition,
-      createSourceResolver({ storageDir: path.join(tmpRoot, 'unused') }),
+      createSourceResolver(),
       { downloadDir: path.join(tmpRoot, 'downloads') },
     )
 
     assert.equal(materialized.scenes[0]?.source, 'foto.jpg')
   })
 
+  it('resolves a string source from the provided assets map', async () => {
+    const filePath = path.join(tmpRoot, 'mapped.jpg')
+    fs.writeFileSync(filePath, 'image')
+
+    const materialized = await materializeCompositionSources(
+      {
+        output: 'out.mp4',
+        width: 64,
+        height: 64,
+        fps: 25,
+        scenes: [{ type: 'image', source: 'background', duration: 4 }],
+      },
+      createSourceResolver({ assets: { background: filePath } }),
+      {
+        downloadDir: path.join(tmpRoot, 'downloads'),
+        assets: { background: filePath },
+      },
+    )
+
+    assert.equal(materialized.scenes[0]?.source, path.resolve(filePath))
+  })
+
   it('resolves file, asset and url sources to local paths', async () => {
     const filePath = path.join(tmpRoot, 'outside.jpg')
     fs.writeFileSync(filePath, 'file')
-    const importPath = path.join(tmpRoot, 'imported.png')
-    fs.writeFileSync(importPath, 'asset')
-    const manager = new LocalAssetManager(
-      new LocalFileStorage(path.join(tmpRoot, 'storage')),
-    )
-    const asset = await manager.import({ path: importPath })
+    const assetPath = path.join(tmpRoot, 'imported.png')
+    fs.writeFileSync(assetPath, 'asset')
     const downloadDir = path.join(tmpRoot, 'downloads')
+    const assets = { hero: assetPath }
     const resolver = createSourceResolver({
-      assetManager: manager,
+      assets,
       download: async (_url, destPath) => {
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true })
         await fs.promises.writeFile(destPath, 'url')
@@ -66,7 +83,7 @@ describe('materializeCompositionSources', () => {
           },
           {
             type: 'image',
-            source: { type: 'asset', id: asset.id },
+            source: { type: 'asset', id: 'hero' },
             duration: 2,
           },
           {
@@ -77,11 +94,11 @@ describe('materializeCompositionSources', () => {
         ],
       },
       resolver,
-      { downloadDir },
+      { downloadDir, assets },
     )
 
     assert.equal(materialized.scenes[0]?.source, path.resolve(filePath))
-    assert.equal(materialized.scenes[1]?.source, asset.path)
+    assert.equal(materialized.scenes[1]?.source, path.resolve(assetPath))
     assert.equal(
       typeof materialized.scenes[2]?.source === 'string' &&
         materialized.scenes[2].source.startsWith(downloadDir),

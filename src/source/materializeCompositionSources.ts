@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { AudioClip } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
 import type { OverlayClip } from '../interfaces/overlay'
@@ -84,6 +85,11 @@ async function resolveMediaSource(
   context: SourceResolverContext,
 ): Promise<string> {
   if (typeof source === 'string') {
+    const mapped = context.assets?.[source]
+    if (mapped !== undefined && mapped.trim() !== '') {
+      return path.resolve(mapped)
+    }
+
     return source
   }
 

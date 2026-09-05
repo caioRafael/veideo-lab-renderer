@@ -30,7 +30,9 @@ export class MediaResolver {
   }
 
   resolveOutput(source: string): string {
-    const resolved = path.join(this.mediaPaths.outputVideos, source)
+    const resolved = path.isAbsolute(source)
+      ? path.resolve(source)
+      : path.join(this.mediaPaths.outputVideos, source)
     fs.mkdirSync(path.dirname(resolved), { recursive: true })
     return resolved
   }
@@ -43,11 +45,20 @@ export class MediaResolver {
     return this.resolveMediaFile(this.mediaPaths.videos, source)
   }
 
-  private resolveMediaFile(dir: string, source: string): string {
-    const resolved = path.isAbsolute(source)
-      ? path.resolve(source)
-      : path.join(dir, source)
+  private resolveMediaFile(dir: string | undefined, source: string): string {
+    if (path.isAbsolute(source)) {
+      const resolved = path.resolve(source)
+      this.assertReadableFile(resolved)
+      return resolved
+    }
 
+    if (dir === undefined) {
+      throw new Error(
+        `Asset not found: ${source}. Provide it in assets or use a file/url source.`,
+      )
+    }
+
+    const resolved = path.join(dir, source)
     this.assertReadableFile(resolved)
     return resolved
   }

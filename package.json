@@ -1,22 +1,36 @@
 {
   "name": "video-lab",
   "version": "1.0.0",
-  "description": "",
+  "description": "Node.js/TypeScript library for composing and rendering videos with FFmpeg",
   "type": "module",
-  "main": "index.js",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "scripts",
+    "assets",
+    "!src/**/*.test.ts"
+  ],
   "scripts": {
-    "dev": "tsx src/cli/index.ts",
-    "render": "tsx src/cli/index.ts",
-    "render-template": "tsx src/cli/renderTemplate.ts",
-    "factory": "tsx src/cli/factory.ts",
-    "asset": "tsx src/cli/asset.ts",
-    "benchmark": "tsx src/benchmark/run.ts",
+    "build": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "video",
+    "ffmpeg",
+    "composition",
+    "render"
+  ],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
