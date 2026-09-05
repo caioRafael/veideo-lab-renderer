@@ -784,10 +784,10 @@ Onde:
 t  = tipo (`in` ou `out`)
 st = início
 d  = duração
-c  = cor (opcional; `black` no video-lab)
+c  = cor (opcional; `black` no Patchwork)
 ```
 
-No video-lab, `transition.type = "fade"` **não** usa `xfade`. É fade-out da cena anterior + fade-in da seguinte + `concat`:
+No Patchwork, `transition.type = "fade"` **não** usa `xfade`. É fade-out da cena anterior + fade-in da seguinte + `concat`:
 
 ```text
 A ─────────╲
@@ -1708,7 +1708,7 @@ ffmpeg \
 
 # 83. Como isso vira um Video Engine
 
-O **video-lab** já segue este caminho: Composition JSON → RenderPlan → `FfmpegCommandBuilder` → `spawn(ffmpeg)`. A API pública não é uma lista de flags; é o JSON de composição (cenas, `transition`, áudio, texto, overlay). Ver [README](README.md) e as seções 89–91.
+O **Patchwork** já segue este caminho: Composition JSON → RenderPlan → `FfmpegCommandBuilder` → `spawn(ffmpeg)`. A API pública não é uma lista de flags; é o JSON de composição (cenas, `transition`, áudio, texto, overlay). Ver [README](README.md) e as seções 89–91.
 
 Não recomendo que a API seja:
 
@@ -1718,7 +1718,7 @@ render(["-i", "video.mp4", "-filter_complex", "..."]);
 
 Isso faria o sistema virar apenas um wrapper do FFmpeg.
 
-Em vez disso, o video-lab descreve intenção:
+Em vez disso, o Patchwork descreve intenção:
 
 ```json
 {
@@ -1755,7 +1755,7 @@ MP4
 
 ---
 
-# 84. Arquitetura do video-lab
+# 84. Arquitetura do Patchwork
 
 A árvore real (não um esboço futuro):
 
@@ -1781,7 +1781,7 @@ src/
 A entrada do pacote:
 
 ```ts
-import { render } from 'video-lab'
+import { render } from '@caiorafael/patchwork'
 
 await render({ composition, assets, output })
 ```
@@ -1960,7 +1960,7 @@ ffprobe -v quiet -print_format json -show_format -show_streams input.mp4
 
 # 89. Crossfade (`xfade`)
 
-`xfade` mistura **dois** streams de vídeo. É o filtro do `transition.type = "crossfade"` no video-lab.
+`xfade` mistura **dois** streams de vídeo. É o filtro do `transition.type = "crossfade"` no Patchwork.
 
 Não confundir com o filtro `fade` (seção 34), que só altera um stream em direção ao preto.
 
@@ -1986,7 +1986,7 @@ duration   = duração da mistura, em segundos
 offset     = instante no stream A em que a mistura começa
 ```
 
-Os dois lados precisam da mesma resolução, FPS, pixel format e time base. Por isso o video-lab aplica `settb=AVTB` imediatamente antes do `xfade`.
+Os dois lados precisam da mesma resolução, FPS, pixel format e time base. Por isso o Patchwork aplica `settb=AVTB` imediatamente antes do `xfade`.
 
 Exemplo (A = 5s, B = 5s, crossfade = 1s):
 
@@ -2005,7 +2005,7 @@ duração final = 5 + 5 - 1 = 9
 
 ---
 
-# 90. Filter graph do video-lab
+# 90. Filter graph do Patchwork
 
 O `FfmpegCommandBuilder` monta **um** `-filter_complex` por render. Não há arquivos intermediários de vídeo.
 

@@ -1,8 +1,11 @@
-# video-lab
+# Patchwork
+
+[![npm version](https://img.shields.io/npm/v/@caiorafael/patchwork.svg)](https://www.npmjs.com/package/@caiorafael/patchwork)
+[![CI](https://github.com/caioRafael/veideo-lab-renderer/actions/workflows/ci.yml/badge.svg)](https://github.com/caioRafael/veideo-lab-renderer/actions/workflows/ci.yml)
 
 Biblioteca Node.js/TypeScript para **compor e renderizar vídeos** com FFmpeg.
 
-A aplicação consumidora constrói uma `Composition` em memória e passa os assets. O video-lab parseia, valida, monta o pipeline e gera o MP4. Ele não conhece CLI, HTTP, templates, factory, editor ou banco.
+A aplicação consumidora constrói uma `Composition` em memória e passa os assets. O Patchwork parseia, valida, monta o pipeline e gera o MP4. Ele não conhece CLI, HTTP, templates, factory, editor ou banco.
 
 ```text
 Aplicação externa
@@ -10,7 +13,7 @@ Aplicação externa
        │ Composition + Assets
        ▼
 ┌─────────────────────┐
-│      VIDEO-LAB      │
+│      PATCHWORK      │
 │ Composition Engine  │
 │ Render Engine       │
 └──────────┬──────────┘
@@ -22,30 +25,39 @@ Aplicação externa
 
 ## Requisitos
 
-- Node.js
-- [pnpm](https://pnpm.io)
+- Node.js 20+
 - FFmpeg no PATH
 - Para `drawtext` nativo: FFmpeg com libfreetype. Sem isso, o engine rasteriza o texto em PNG e aplica como overlay.
 
+## Instalação
+
 ```bash
-pnpm install
+pnpm add @caiorafael/patchwork
+```
+
+Também funciona com `npm install @caiorafael/patchwork`.
+
+FFmpeg é dependência do **sistema**, não do pacote:
+
+```bash
 brew install ffmpeg
 ```
 
-Em outra aplicação TypeScript:
+Desenvolvimento local deste repositório:
 
 ```bash
-pnpm add video-lab
+pnpm install
+pnpm build
 ```
 
-Ou, em desenvolvimento local, aponte para este repositório. A entrada do pacote é `src/index.ts`.
+O pacote publicado expõe `dist/`. Consumo via `file:` (playground) precisa do `pnpm build` neste repo. Publicar no npm: [docs/publishing.md](docs/publishing.md).
 
 Contrato completo da API: [docs/api.md](docs/api.md).
 
 ## Uso
 
 ```ts
-import { render } from 'video-lab'
+import { render } from '@caiorafael/patchwork'
 
 const result = await render({
   composition: {
@@ -76,7 +88,7 @@ console.log(result.outputPath, result.duration)
 Opcional: `fonts`, `signal` (`AbortSignal`) e `onProgress`.
 
 ```ts
-import { parseComposition } from 'video-lab'
+import { parseComposition } from '@caiorafael/patchwork'
 
 const composition = parseComposition(rawObject)
 ```
@@ -342,7 +354,7 @@ O JSON antigo continua válido:
 {
   "texts": [
     {
-      "content": "Video Lab",
+      "content": "Patchwork",
       "start": 0,
       "duration": 5,
       "x": "center",
@@ -558,8 +570,9 @@ O fallback de texto (PNG no bounding box) é escolhido pelo `Renderer` quando o 
 ## Estrutura
 
 ```text
-compositions/             # exemplos de Composition JSON
+dist/                     # build publicado no npm (pnpm build)
 scripts/                  # fallback de texto (Swift) sem drawtext
+examples/                 # smoke render local
 src/
   index.ts                # API pública
   api/                    # render() programático
@@ -576,6 +589,7 @@ src/
 
 - [docs/api.md](docs/api.md) — API pública (`render`, `parseComposition`, resultado)
 - [docs/assets.md](docs/assets.md) — sources (`file`, `asset`, `url`) e mapa `assets`
+- [docs/publishing.md](docs/publishing.md) — publicar no npm pelo GitHub
 - [docs/render-pipeline.md](docs/render-pipeline.md) — ciclo de vida do render
 - [docs/progress.md](docs/progress.md) — callback de progresso
 - [docs/cancellation.md](docs/cancellation.md) — AbortSignal e cleanup

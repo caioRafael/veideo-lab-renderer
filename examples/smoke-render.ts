@@ -34,7 +34,7 @@ async function main(): Promise<void> {
       ],
       texts: [
         {
-          content: 'video-lab',
+          content: 'patchwork',
           start: 0,
           duration: 3.5,
           x: 'center',

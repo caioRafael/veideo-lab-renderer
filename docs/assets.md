@@ -89,7 +89,7 @@ Texto não usa `assets`. A fonte vem de:
 
 1. caminho absoluto no campo `font` / `style.font` (arquivo `.ttf` / `.otf` / `.ttc`);
 2. diretório passado em `render({ fonts })`;
-3. fontes empacotadas em `assets/fonts`;
+3. fontes empacotadas no pacote npm (`assets/fonts`);
 4. fontes do sistema (Arial, DejaVu, Liberation, etc.).
 
 ## Onde `source` aparece

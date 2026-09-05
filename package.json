@@ -1,45 +1,69 @@
 {
-  "name": "video-lab",
+  "name": "@caiorafael/patchwork",
   "version": "1.0.0",
-  "description": "Node.js/TypeScript library for composing and rendering videos with FFmpeg",
+  "description": "Patchwork — Node.js/TypeScript library for composing and rendering videos with FFmpeg",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
-    "src",
+    "dist",
     "scripts",
     "assets",
-    "!src/**/*.test.ts"
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsup",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test src/**/*.test.ts src/*.test.ts",
     "test:render": "tsx examples/smoke-render.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
+    "patchwork",
     "video",
     "ffmpeg",
     "composition",
-    "render"
+    "render",
+    "mp4",
+    "timeline"
   ],
-  "author": "",
+  "author": {
+    "name": "Caio Rafael",
+    "email": "caiorafaelrg@gmail.com",
+    "url": "https://github.com/caioRafael"
+  },
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caioRafael/veideo-lab-renderer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/caioRafael/veideo-lab-renderer/issues"
+  },
+  "homepage": "https://github.com/caioRafael/veideo-lab-renderer#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
     "@rocketseat/eslint-config": "^2.2.2",
     "@types/node": "^26.4.1",
     "eslint": "^8.57.1",
     "prettier": "^3.9.6",
+    "tsup": "^8.5.1",
     "tsx": "^4.23.13",
     "typescript": "^5.7.3"
   }

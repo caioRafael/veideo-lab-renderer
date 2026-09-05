@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { findPackageRoot } from '../packageRoot'
 import type {
   OverlayItem,
   OverlayTrack,
@@ -17,13 +17,7 @@ import {
 import { computeTextRasterBounds } from '../text/textBounds'
 import { rasterizeTextConfig } from '../text/rasterizeConfig'
 
-const SCRIPT_PATH = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'scripts',
-  'render-text.swift',
-)
+const SCRIPT_PATH = path.join(findPackageRoot(), 'scripts', 'render-text.swift')
 
 const RASTERIZE_CONCURRENCY = 4
 

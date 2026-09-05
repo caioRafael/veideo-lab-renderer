@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { findPackageRoot } from '../packageRoot'
 
 export interface FontStyle {
   family?: string
@@ -8,13 +8,7 @@ export interface FontStyle {
   italic?: boolean
 }
 
-const BUNDLED_FONTS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'assets',
-  'fonts',
-)
+const BUNDLED_FONTS_DIR = path.join(findPackageRoot(), 'assets', 'fonts')
 
 const SYSTEM_FONT_DIRS = [
   '/System/Library/Fonts/Supplemental',

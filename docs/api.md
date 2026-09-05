@@ -1,9 +1,15 @@
 # API pública
 
-O video-lab expõe uma superfície pequena. A aplicação consumidora constrói a `Composition` e chama `render`.
+Instale o pacote publicado:
+
+```bash
+pnpm add @caiorafael/patchwork
+```
+
+O Patchwork expõe uma superfície pequena. A aplicação consumidora constrói a `Composition` e chama `render`.
 
 ```ts
-import { render, parseComposition } from 'video-lab'
+import { render, parseComposition } from '@caiorafael/patchwork'
 ```
 
 Não há CLI, HTTP, templates nem factory neste pacote.

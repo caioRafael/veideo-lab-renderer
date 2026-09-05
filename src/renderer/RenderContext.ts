@@ -12,7 +12,7 @@ export interface RenderContext {
 }
 
 export function createRenderContext(): RenderContext {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-render-'))
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patchwork-render-'))
   const textDir = path.join(tempDir, 'text')
   const intermediateDir = path.join(tempDir, 'intermediate')
   const downloadsDir = path.join(tempDir, 'downloads')

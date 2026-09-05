@@ -1,6 +1,6 @@
 # Render pipeline
 
-O video-lab orquestra o FFmpeg. O Node não processa frames.
+O Patchwork orquestra o FFmpeg. O Node não processa frames.
 
 ```text
 render({ composition, assets, output })
@@ -22,7 +22,7 @@ FfmpegExecutor (spawn)
 cleanup
 ```
 
-A API pública (`render`) é o único fluxo de entrada. Ela parseia o objeto, aplica `output` e `assets`, e chama o mesmo `Renderer` interno.
+A API pública (`render`, pacote npm `@caiorafael/patchwork`) é o único fluxo de entrada. Ela parseia o objeto, aplica `output` e `assets`, e chama o mesmo `Renderer` interno.
 
 ## Ciclo de vida
 
@@ -40,7 +40,7 @@ Por baixo, `prepare` e `runPrepared` continuam separados. A API pública executa
 Cada render ganha um diretório isolado:
 
 ```text
-/tmp/video-lab-render-XXXXXX/
+/tmp/patchwork-render-XXXXXX/
   text/
   intermediate/
   downloads/          # arquivos baixados de source.type = url

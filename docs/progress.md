@@ -1,9 +1,9 @@
 # Progresso
 
-O engine expõe progresso por callback na API pública.
+O engine expõe progresso por callback na API pública (`pnpm add @caiorafael/patchwork`).
 
 ```ts
-import { render } from 'video-lab'
+import { render } from '@caiorafael/patchwork'
 
 await render({
   composition,

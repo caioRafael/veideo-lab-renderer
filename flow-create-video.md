@@ -1,6 +1,6 @@
 # Guia: Composition → MP4
 
-Como o objeto de composição vira um vídeo no video-lab. A entrada é `render({ composition, assets, output })`. Não há arquivo JSON obrigatório nem CLI.
+Como o objeto de composição vira um vídeo no Patchwork. A entrada é `render({ composition, assets, output })`. Não há arquivo JSON obrigatório nem CLI.
 
 ## Pipeline
 
@@ -216,7 +216,7 @@ audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ─────�
 ## Como usar
 
 ```ts
-import { render } from 'video-lab'
+import { render } from '@caiorafael/patchwork'
 
 await render({
   composition,
@@ -224,5 +224,7 @@ await render({
   output: './output/video.mp4',
 })
 ```
+
+Instalação: `pnpm add @caiorafael/patchwork`. O pacote npm entrega o build em `dist/`.
 
 Exemplos de Composition estão em `compositions/`. As strings de `source` nesses arquivos são ids de asset. Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) são estáticos e entram depois do transform. Ver [README](README.md#transformações), [README](README.md#efeitos) e [docs/api.md](docs/api.md).

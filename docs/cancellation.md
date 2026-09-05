@@ -1,9 +1,9 @@
 # Cancelamento
 
-A API pública aceita `AbortSignal`:
+A API pública aceita `AbortSignal` (`pnpm add @caiorafael/patchwork`):
 
 ```ts
-import { render } from 'video-lab'
+import { render } from '@caiorafael/patchwork'
 
 const controller = new AbortController()
 
