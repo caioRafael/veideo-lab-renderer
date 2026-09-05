@@ -32,12 +32,9 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# Benchmark machine output
-docs/benchmark-results.json
+# Local render output
+/output/
 
-# media files   
+# media files
 *.mp3
 *.mp4
-
-# Managed assets
-/storage/
