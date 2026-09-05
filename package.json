@@ -1,6 +1,6 @@
 {
   "name": "@caiorafael/patchwork",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Patchwork — Node.js/TypeScript library for composing and rendering videos with FFmpeg",
   "type": "module",
   "main": "./dist/index.js",
