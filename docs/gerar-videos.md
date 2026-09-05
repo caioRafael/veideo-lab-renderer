@@ -2,13 +2,14 @@
 
 Guia prático. Em poucos minutos você instala, coloca as mídias e sai com um MP4.
 
-Há **três jeitos** de gerar:
+Há **três jeitos** de gerar (e um comando à parte para importar mídia):
 
 | Quando usar | Comando | Entrada |
 |---|---|---|
 | Um vídeo descrito à mão | `pnpm render` | `compositions/*.json` |
 | Um vídeo a partir de um modelo | `pnpm render-template` | template + arquivo de variáveis |
 | Vários vídeos do mesmo modelo | `pnpm factory` | template + batch de variáveis |
+| Guardar um arquivo no Video Lab | `pnpm asset import` | caminho absoluto no computador |
 
 O FFmpeg faz o encode. O Node só valida o JSON e monta o comando.
 
@@ -36,7 +37,7 @@ O formula padrão do Homebrew pode não ter `drawtext`. Não precisa instalar ou
 
 ## 2. Coloque as mídias
 
-Só o **nome do arquivo** entra no JSON. A pasta é escolhida pelo tipo:
+O jeito mais simples continua sendo o **nome do arquivo** no JSON. A pasta é escolhida pelo tipo:
 
 | Tipo no JSON | Pasta |
 |---|---|
@@ -53,6 +54,21 @@ input/images/minha-foto.jpg
 input/audios/trilha.mp3
 input/videos/clipe.mp4
 ```
+
+Se o arquivo **não** estiver em `input/`, o `source` pode ser um objeto:
+
+| Origem | JSON | Observação |
+|---|---|---|
+| Disco (qualquer pasta) | `{ "type": "file", "path": "/Users/caio/Desktop/foto.jpg" }` | usa o arquivo no lugar |
+| Asset importado | `{ "type": "asset", "id": "asset_…" }` | copie antes com `pnpm asset import` |
+| URL | `{ "type": "url", "url": "https://example.com/foto.jpg" }` | só HTTP/HTTPS; baixa no render |
+
+```bash
+pnpm asset import /Users/caio/Desktop/foto.jpg
+pnpm asset list
+```
+
+Detalhes: [assets.md](assets.md).
 
 ---
 
@@ -85,6 +101,7 @@ pnpm render compositions/text-basic.json
 pnpm render compositions/fade.json
 pnpm render compositions/ken-burns.json
 pnpm render compositions/effects-combined.json
+pnpm render compositions/joao-e-maria.json
 ```
 
 O campo `output` do JSON é só o nome do arquivo. `text-basic.json` grava `output/videos/text-basic.mp4`.
@@ -148,7 +165,7 @@ Abra `output/videos/meu-video.mp4`.
 | Campo | Obrigatório | Notas |
 |---|---|---|
 | `type` | sim | `image` ou `video` |
-| `source` | sim | nome do arquivo |
+| `source` | sim | nome em `input/` **ou** objeto `file` / `asset` / `url` |
 | `duration` | sim | segundos na timeline |
 | `transition` | não | `fade` ou `crossfade` **a partir da cena anterior** |
 | `transform` | não | `scale`, `position`, `crop`, `zoom`, `pan` |
@@ -212,7 +229,7 @@ Receita de duas cenas com transição:
 }
 ```
 
-Schema completo: [README](../README.md#composição-json). Como o JSON vira FFmpeg: [flow-create-video.md](../flow-create-video.md).
+Schema completo: [README](../README.md#composição-json). Sources: [assets.md](assets.md). Como o JSON vira FFmpeg: [flow-create-video.md](../flow-create-video.md).
 
 ---
 
@@ -350,7 +367,10 @@ Detalhes: [docs/factory.md](factory.md).
 | Sintoma | O que fazer |
 |---|---|
 | `Composition file not found` | caminho relativo à raiz do repo |
-| `Asset not found` | arquivo na pasta certa, **só o nome** no JSON |
+| `Asset not found` | string: arquivo na pasta `input/` certa, **só o nome** |
+| `File source not found` | `{ "type": "file" }`: o `path` não existe |
+| `Asset "asset_…" was not found` | rode `pnpm asset list` e use um id importado |
+| `Invalid URL source` | só `http://` e `https://` |
 | `Template variable "title" is required` | falta no `--input` / `--var` |
 | `expected number, received string` | no JSON use `72`, não `"72"` |
 | `FFmpeg failed` | `pnpm render … --debug` e leia o stderr |
@@ -365,6 +385,7 @@ Detalhes: [docs/factory.md](factory.md).
 1 vídeo, JSON único ..............  pnpm render compositions/x.json
 1 vídeo, layout reutilizável ......  pnpm render-template t.json --input d.json
 N vídeos, mesmo layout ............  pnpm factory render-template t.json --input lote.json --concurrency 2
+Arquivo fora do projeto ..........  source { type: file }  ou  pnpm asset import
 ```
 
 Depois: abra `output/videos/`.

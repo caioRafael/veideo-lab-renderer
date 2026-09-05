@@ -10,6 +10,8 @@ JSON de Composition
     ou  Template + N inputs → VideoFactory → N jobs
 → CompositionParser (já chamado no resolver)
 → Renderer.prepare
+    → SourceResolver (file / asset / url → path local)
+    → MediaResolver  (string "foto.jpg" → input/)
 → RenderPlan
 → Tracks
 → FfmpegCommandBuilder
@@ -18,7 +20,7 @@ JSON de Composition
 → MP4
 ```
 
-O JSON descreve a timeline. O parser valida e aplica defaults. Templates só produzem Composition. A Factory só orquestra jobs. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
+O JSON descreve a timeline. O parser valida e aplica defaults. Templates só produzem Composition. A Factory só orquestra jobs. Sources estruturadas viram arquivo local no `prepare`. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
 
 ```text
 Video Track     cenas em sequência (image ou video)
@@ -53,7 +55,7 @@ Arquivo exemplo: `compositions/example.json`
 }
 ```
 
-Os `source` são só o nome do arquivo. A pasta vem do tipo:
+`source` como string continua sendo só o nome do arquivo. A pasta vem do tipo:
 
 | Tipo | Pasta |
 |---|---|
@@ -62,6 +64,8 @@ Os `source` são só o nome do arquivo. A pasta vem do tipo:
 | áudio extra | `input/audios/` |
 | fonte | `input/fonts/` ou fonte do sistema |
 | `output` | `output/videos/` |
+
+O mesmo campo aceita `{ "type": "file" }`, `{ "type": "asset" }` ou `{ "type": "url" }`. Depois do `SourceResolver`, o FFmpeg recebe um path local — o `RenderPlan` não conhece URL nem Asset. Ver [docs/assets.md](docs/assets.md).
 
 ### Cenas
 
@@ -191,7 +195,11 @@ CLI
  ↓
 loadComposition / CompositionParser
  ↓
-Renderer.prepare → RenderPlan (tracks)
+Renderer.prepare
+  SourceResolver → path local
+  MediaResolver  → input/ (string) ou path já resolvido
+ ↓
+RenderPlan (tracks)
  ↓
 FfmpegCommandBuilder → args[]
  ↓

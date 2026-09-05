@@ -8,6 +8,7 @@ import {
   type FfmpegExecutor,
 } from '../ffmpeg/FfmpegExecutor'
 import type { Composition } from '../interfaces/composition'
+import type { SourceResolver } from '../interfaces/source'
 import { getTextItems, type RenderPlan } from '../interfaces/render-plan'
 import type {
   RenderMetrics,
@@ -24,6 +25,8 @@ import {
 import { FontResolver } from '../media/FontResolver'
 import type { MediaResolver } from '../media/MediaResolver'
 import { rasterizeTextTrack } from '../media/rasterizeTextTrack'
+import { createSourceResolver } from '../source/createSourceResolver'
+import { materializeCompositionSources } from '../source/materializeCompositionSources'
 import { buildRenderPlan } from './buildRenderPlan'
 import { collectPlanStats } from './collectPlanStats'
 import {
@@ -42,6 +45,7 @@ export interface RendererOptions {
   commandBuilder?: FfmpegCommandBuilder
   executor?: FfmpegExecutor
   mediaDurationProbe?: MediaDurationProbe
+  sourceResolver?: SourceResolver
 }
 
 export interface PreparedRender {
@@ -69,6 +73,7 @@ export class Renderer {
   private readonly commandBuilder: FfmpegCommandBuilder
   private readonly executor: FfmpegExecutor
   private readonly mediaDurationProbe: MediaDurationProbe | undefined
+  private readonly sourceResolver: SourceResolver
   private activeContext: RenderContext | undefined
 
   constructor(options: RendererOptions) {
@@ -78,6 +83,7 @@ export class Renderer {
     this.commandBuilder = options.commandBuilder ?? new FfmpegCommandBuilder()
     this.executor = options.executor ?? new SpawnFfmpegExecutor()
     this.mediaDurationProbe = options.mediaDurationProbe
+    this.sourceResolver = options.sourceResolver ?? createSourceResolver()
   }
 
   async prepare(
@@ -295,8 +301,16 @@ export class Renderer {
     context: RenderContext,
     options: RenderOptions,
   ): Promise<{ plan: RenderPlan; stats: RenderPlanStats }> {
-    const plan = buildRenderPlan(
+    const materialized = await materializeCompositionSources(
       composition,
+      this.sourceResolver,
+      {
+        downloadDir: context.downloadsDir,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      },
+    )
+    const plan = buildRenderPlan(
+      materialized,
       this.mediaResolver,
       this.audioTimeline,
       this.fontResolver,

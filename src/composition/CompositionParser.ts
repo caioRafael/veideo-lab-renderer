@@ -9,6 +9,7 @@ import {
 import { isShortMediaPolicy } from '../interfaces/media-timing'
 import type { OverlayClip } from '../interfaces/overlay'
 import type { Scene, SceneType } from '../interfaces/scene'
+import type { MediaSource, Source } from '../interfaces/source'
 import {
   isHexColor,
   isTextAlign,
@@ -109,7 +110,7 @@ export class CompositionParser {
 
     const scene: Scene = {
       type: value.type,
-      source: this.parseRequiredString(value.source, `${label}.source`),
+      source: this.parseSource(value.source, `${label}.source`),
       duration: this.parseRequiredPositiveNumber(
         value.duration,
         `${label}.duration`,
@@ -535,7 +536,7 @@ export class CompositionParser {
     }
 
     const clip: AudioClip = {
-      source: this.parseRequiredString(value.source, `${label}.source`),
+      source: this.parseSource(value.source, `${label}.source`),
       role: value.role,
     }
 
@@ -959,7 +960,7 @@ export class CompositionParser {
     }
 
     return {
-      source: this.parseRequiredString(value.source, `${label}.source`),
+      source: this.parseSource(value.source, `${label}.source`),
       start: this.parseOptionalStart(value.start, `${label}.start`),
       duration: this.parseRequiredPositiveNumber(
         value.duration,
@@ -1023,6 +1024,48 @@ export class CompositionParser {
     }
 
     return this.parseNonNegativeNumber(value, label)
+  }
+
+  private parseSource(value: unknown, label: string): MediaSource {
+    if (typeof value === 'string') {
+      return this.parseRequiredString(value, label)
+    }
+
+    if (!this.isRecord(value)) {
+      throw this.invalid(
+        label,
+        'expected a non-empty string or a source object',
+      )
+    }
+
+    if (value.type === 'file') {
+      const source: Source = {
+        type: 'file',
+        path: this.parseRequiredString(value.path, `${label}.path`),
+      }
+      return source
+    }
+
+    if (value.type === 'asset') {
+      const source: Source = {
+        type: 'asset',
+        id: this.parseRequiredString(value.id, `${label}.id`),
+      }
+      return source
+    }
+
+    if (value.type === 'url') {
+      const source: Source = {
+        type: 'url',
+        url: this.parseRequiredString(value.url, `${label}.url`),
+      }
+      return source
+    }
+
+    throw this.invalid(
+      label,
+      'expected a source object with type "file", "asset" or "url"',
+    )
   }
 
   private parseRequiredString(value: unknown, label: string): string {

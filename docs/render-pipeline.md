@@ -8,6 +8,8 @@ Composition  ou  Template + Input → TemplateResolver
 loadComposition / CompositionParser
     ↓
 Renderer.prepare
+    ├── SourceResolver → arquivo local (file / asset / url)
+    ├── MediaResolver  → filename em input/ ou path já resolvido
     ↓
 RenderPlan + RenderContext
     ↓
@@ -23,7 +25,7 @@ cleanup
 ## Ciclo de vida
 
 1. **loading** — a CLI lê e valida o JSON.
-2. **planning** — `buildRenderPlan` monta tracks.
+2. **planning** — `SourceResolver` materializa `file` / `asset` / `url`; `buildRenderPlan` monta tracks.
 3. **preparing** — probe de duração, rasterização de texto (se não houver `drawtext`), comando FFmpeg.
 4. **rendering** — `spawn` do FFmpeg. O arquivo é escrito em `name.tmp.mp4` (extensão `.mp4` para o muxer).
 5. **finalizing** — rename atômico para o caminho final.
@@ -39,13 +41,14 @@ Cada render ganha um diretório isolado:
 /tmp/video-lab-render-XXXXXX/
   text/
   intermediate/
+  downloads/          # arquivos baixados de source.type = url
 ```
 
 Dois `Renderer` podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez. A Factory cria uma instância por job e limita quantas rodam juntos (`maxConcurrentRenders`).
 
 ## Temporary files
 
-Textos rasterizados (fallback PNG) vão para `context.textDir`. Sucesso, erro e cancelamento chamam `disposeRenderContext`.
+Textos rasterizados (fallback PNG) vão para `context.textDir`. Downloads de URL vão para `context.downloadsDir`. Sucesso, erro e cancelamento chamam `disposeRenderContext` e apagam o diretório inteiro.
 
 ## FFmpeg
 

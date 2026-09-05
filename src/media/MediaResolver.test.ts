@@ -62,6 +62,32 @@ describe('MediaResolver', () => {
     assert.throws(() => resolver.resolveAudio('missing.mp3'), /Asset not found/)
   })
 
+  it('resolves an absolute path without joining the input folder', () => {
+    const outside = path.join(tmpRoot, 'outside.jpg')
+    fs.writeFileSync(outside, 'image')
+
+    assert.equal(
+      resolver.resolveSceneSource({
+        type: 'image',
+        source: outside,
+        duration: 4,
+      }),
+      path.resolve(outside),
+    )
+  })
+
+  it('rejects an absolute path that is not a file', () => {
+    assert.throws(
+      () =>
+        resolver.resolveSceneSource({
+          type: 'image',
+          source: tmpRoot,
+          duration: 4,
+        }),
+      /Asset is not a file/,
+    )
+  })
+
   it('resolves the output path and creates the directory', () => {
     const outputPath = resolver.resolveOutput('result.mp4')
     assert.equal(outputPath, path.join(mediaPaths.outputVideos, 'result.mp4'))

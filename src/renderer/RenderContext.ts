@@ -8,20 +8,24 @@ export interface RenderContext {
   tempDir: string
   textDir: string
   intermediateDir: string
+  downloadsDir: string
 }
 
 export function createRenderContext(): RenderContext {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-render-'))
   const textDir = path.join(tempDir, 'text')
   const intermediateDir = path.join(tempDir, 'intermediate')
+  const downloadsDir = path.join(tempDir, 'downloads')
   fs.mkdirSync(textDir, { recursive: true })
   fs.mkdirSync(intermediateDir, { recursive: true })
+  fs.mkdirSync(downloadsDir, { recursive: true })
 
   return {
     id: path.basename(tempDir),
     tempDir,
     textDir,
     intermediateDir,
+    downloadsDir,
   }
 }
 

@@ -19,7 +19,7 @@ FFmpeg recebe SIGTERM (depois SIGKILL)
  ↓
 staging `*.tmp.mp4` é removido
  ↓
-RenderContext é apagado
+RenderContext é apagado (textos PNG e downloads de URL)
  ↓
 RenderCancelledError
 ```

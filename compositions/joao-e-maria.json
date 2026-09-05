@@ -1,0 +1,78 @@
+{
+  "output": "joao-e-maria.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "scenes": [
+    {
+      "type": "image",
+      "source": {
+        "type": "asset",
+        "id": "asset_81223813b1b144f2bcc20acd31c872c2"
+      },
+      "duration": 5,
+      "transform": {
+        "scale": { "from": 1, "to": 1.12, "easing": "ease-out" }
+      }
+    },
+    {
+      "type": "image",
+      "source": {
+        "type": "asset",
+        "id": "asset_a3892699357a459282eba37ca26ae3e8"
+      },
+      "duration": 5,
+      "transition": {
+        "type": "crossfade",
+        "duration": 1
+      },
+      "transform": {
+        "scale": { "from": 1.08, "to": 1, "easing": "ease-in-out" }
+      }
+    }
+  ],
+  "texts": [
+    {
+      "content": "João e Maria",
+      "start": 0,
+      "duration": 9,
+      "x": "center",
+      "y": 80,
+      "fontSize": 72,
+      "color": "#1A1A1A",
+      "font": "Arial",
+      "bold": true,
+      "align": "center"
+    },
+    {
+      "content": "João",
+      "start": 0.4,
+      "duration": 4.2,
+      "x": "center",
+      "y": 960,
+      "fontSize": 44,
+      "color": "#333333",
+      "font": "Arial",
+      "align": "center"
+    },
+    {
+      "content": "Maria",
+      "start": 4.8,
+      "duration": 4.2,
+      "x": "center",
+      "y": 960,
+      "fontSize": 44,
+      "color": "#333333",
+      "font": "Arial",
+      "align": "center"
+    }
+  ],
+  "audio": [
+    {
+      "source": "audio.mp3",
+      "role": "focus",
+      "start": 0,
+      "duration": 9
+    }
+  ]
+}

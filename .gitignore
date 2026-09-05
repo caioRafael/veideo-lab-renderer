@@ -38,3 +38,6 @@ docs/benchmark-results.json
 # media files   
 *.mp3
 *.mp4
+
+# Managed assets
+/storage/

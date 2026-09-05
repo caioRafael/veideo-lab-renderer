@@ -83,7 +83,7 @@ describe('CompositionParser', () => {
         parser.parse({
           scenes: [{ type: 'image', duration: 4 }],
         }),
-      /source: expected a non-empty string/,
+      /source: expected a non-empty string or a source object/,
     )
   })
 
@@ -1698,6 +1698,65 @@ describe('CompositionParser', () => {
           ],
         }),
       /style: unexpected field "letterSpacing"/,
+    )
+  })
+
+  it('parses file, asset and url sources', () => {
+    const composition = parser.parse({
+      scenes: [
+        {
+          type: 'image',
+          source: { type: 'file', path: '/tmp/foto.jpg' },
+          duration: 4,
+        },
+        {
+          type: 'image',
+          source: { type: 'asset', id: 'asset_123' },
+          duration: 4,
+        },
+        {
+          type: 'image',
+          source: { type: 'url', url: 'https://example.com/foto.jpg' },
+          duration: 4,
+        },
+      ],
+    })
+
+    assert.deepEqual(composition.scenes[0]?.source, {
+      type: 'file',
+      path: '/tmp/foto.jpg',
+    })
+    assert.deepEqual(composition.scenes[1]?.source, {
+      type: 'asset',
+      id: 'asset_123',
+    })
+    assert.deepEqual(composition.scenes[2]?.source, {
+      type: 'url',
+      url: 'https://example.com/foto.jpg',
+    })
+  })
+
+  it('still parses a string source as a project filename', () => {
+    const composition = parser.parse({
+      scenes: [{ type: 'image', source: 'foto.jpg', duration: 4 }],
+    })
+
+    assert.equal(composition.scenes[0]?.source, 'foto.jpg')
+  })
+
+  it('rejects an unknown source object type', () => {
+    assert.throws(
+      () =>
+        parser.parse({
+          scenes: [
+            {
+              type: 'image',
+              source: { type: 's3', path: 'bucket/foto.jpg' },
+              duration: 4,
+            },
+          ],
+        }),
+      /expected a source object with type "file", "asset" or "url"/,
     )
   })
 

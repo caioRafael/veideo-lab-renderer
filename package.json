@@ -9,6 +9,7 @@
     "render": "tsx src/cli/index.ts",
     "render-template": "tsx src/cli/renderTemplate.ts",
     "factory": "tsx src/cli/factory.ts",
+    "asset": "tsx src/cli/asset.ts",
     "benchmark": "tsx src/benchmark/run.ts",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

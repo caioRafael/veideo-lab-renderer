@@ -3,9 +3,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
+import { LocalAssetManager } from '../asset/LocalAssetManager'
 import type { FfmpegExecutor } from '../ffmpeg/FfmpegExecutor'
 import type { Composition } from '../interfaces/composition'
 import { MediaResolver } from '../media/MediaResolver'
+import { createSourceResolver } from '../source/createSourceResolver'
+import { LocalFileStorage } from '../storage/LocalFileStorage'
 import { Renderer } from './Renderer'
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'video-lab-renderer-'))
@@ -249,6 +252,99 @@ describe('Renderer', () => {
     })
 
     assert.equal(fs.existsSync(prepared.context.tempDir), true)
+    await assert.rejects(() => renderer.runPrepared(prepared), /ffmpeg failed/)
+    assert.equal(fs.existsSync(prepared.context.tempDir), false)
+  })
+
+  it('prepares file, asset and url sources as local FFmpeg inputs', async () => {
+    const outside = path.join(tmpRoot, 'outside.jpg')
+    fs.writeFileSync(outside, 'image')
+    const imported = path.join(tmpRoot, 'imported.png')
+    fs.writeFileSync(imported, 'image')
+    const manager = new LocalAssetManager(
+      new LocalFileStorage(path.join(tmpRoot, 'assets')),
+    )
+    const asset = await manager.import({ path: imported })
+    const sourceResolver = createSourceResolver({
+      assetManager: manager,
+      download: async (_url, destPath) => {
+        await fs.promises.mkdir(path.dirname(destPath), { recursive: true })
+        await fs.promises.writeFile(destPath, 'image')
+      },
+    })
+
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      sourceResolver,
+      executor: { async execute() {} },
+    })
+
+    const prepared = await renderer.prepare({
+      output: 'result.mp4',
+      width: 64,
+      height: 64,
+      fps: 25,
+      scenes: [
+        { type: 'image', source: { type: 'file', path: outside }, duration: 2 },
+        {
+          type: 'image',
+          source: { type: 'asset', id: asset.id },
+          duration: 2,
+        },
+        {
+          type: 'image',
+          source: { type: 'url', url: 'https://example.com/foto.jpg' },
+          duration: 2,
+        },
+      ],
+    })
+
+    assert.ok(prepared.args.includes(path.resolve(outside)))
+    assert.ok(prepared.args.includes(asset.path))
+    const downloaded = fs.readdirSync(prepared.context.downloadsDir)
+    assert.equal(downloaded.length, 1)
+    assert.ok(
+      prepared.args.includes(
+        path.join(prepared.context.downloadsDir, downloaded[0] ?? ''),
+      ),
+    )
+
+    renderer.cleanupTemporaryFiles()
+    assert.equal(fs.existsSync(prepared.context.tempDir), false)
+  })
+
+  it('removes downloaded URL files after a failed render', async () => {
+    const sourceResolver = createSourceResolver({
+      download: async (_url, destPath) => {
+        await fs.promises.mkdir(path.dirname(destPath), { recursive: true })
+        await fs.promises.writeFile(destPath, 'image')
+      },
+    })
+    const renderer = new Renderer({
+      mediaResolver: new MediaResolver(mediaPaths),
+      sourceResolver,
+      executor: {
+        async execute() {
+          throw new Error('ffmpeg failed')
+        },
+      },
+    })
+
+    const prepared = await renderer.prepare({
+      output: 'result.mp4',
+      width: 64,
+      height: 64,
+      fps: 25,
+      scenes: [
+        {
+          type: 'image',
+          source: { type: 'url', url: 'https://example.com/foto.jpg' },
+          duration: 2,
+        },
+      ],
+    })
+
+    assert.equal(fs.existsSync(prepared.context.downloadsDir), true)
     await assert.rejects(() => renderer.runPrepared(prepared), /ffmpeg failed/)
     assert.equal(fs.existsSync(prepared.context.tempDir), false)
   })

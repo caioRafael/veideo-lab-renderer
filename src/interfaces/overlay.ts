@@ -1,5 +1,7 @@
+import type { MediaSource } from './source'
+
 export interface OverlayClip {
-  source: string
+  source: MediaSource
   start: number
   duration: number
   x: number

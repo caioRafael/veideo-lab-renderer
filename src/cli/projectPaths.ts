@@ -14,3 +14,5 @@ export const mediaPaths: MediaPaths = {
   videos: path.join(rootDir, 'input', 'videos'),
   outputVideos: path.join(rootDir, 'output', 'videos'),
 }
+
+export const assetStorageDir = path.join(rootDir, 'storage', 'assets')

@@ -2,7 +2,7 @@
 
 Engine local em TypeScript para montar e produzir vídeos com **FFmpeg**.
 
-Você descreve cenas (imagem/vídeo), transformações, efeitos, transições (`fade` / `crossfade`), áudios, textos e overlays num JSON de composição — ou num **template** com variáveis. O projeto valida, monta um `RenderPlan` e gera o MP4. A **Video Factory** recebe um template + vários inputs e renderiza o lote com concorrência limitada.
+Você descreve cenas (imagem/vídeo), transformações, efeitos, transições (`fade` / `crossfade`), áudios, textos e overlays num JSON de composição — ou num **template** com variáveis. O `source` pode ser o nome de um arquivo em `input/`, um caminho local, um Asset importado ou uma URL. O projeto valida, resolve a mídia para um arquivo local, monta um `RenderPlan` e gera o MP4. A **Video Factory** recebe um template + vários inputs e renderiza o lote com concorrência limitada.
 
 ## Requisitos
 
@@ -22,14 +22,15 @@ brew install ffmpeg
 pnpm install
 ```
 
-Coloque as mídias nas pastas de `input/`:
+Coloque as mídias nas pastas de `input/` **ou** aponte para arquivo, Asset ou URL no `source` (ver [Sources](#sources)):
 
 - imagens → `input/images/`
 - áudios → `input/audios/`
 - vídeos de cena → `input/videos/`
 - fontes (opcional) → `input/fonts/`
+- assets importados → `storage/assets/` (`pnpm asset import`)
 
-**Guia rápido para gerar MP4s:** [docs/gerar-videos.md](docs/gerar-videos.md) — setup, primeiro JSON, template e lote (Factory).
+**Guia rápido para gerar MP4s:** [docs/gerar-videos.md](docs/gerar-videos.md) — setup, primeiro JSON, template e lote (Factory). Sources: [docs/assets.md](docs/assets.md).
 
 ## Uso
 
@@ -84,6 +85,8 @@ pnpm render compositions/example.json --verbose
 pnpm render compositions/example.json --debug
 pnpm render-template templates/quote.json --input templates/inputs/quote.json
 pnpm factory render-template templates/youtube-short.json --input templates/inputs/batch-youtube-short.json --concurrency 2
+pnpm asset import /Users/caio/Desktop/foto.jpg
+pnpm asset list
 pnpm benchmark
 ```
 
@@ -125,15 +128,28 @@ Exemplo mínimo:
 }
 ```
 
-Os `source` são só o nome do arquivo. A pasta é inferida pelo tipo:
+### Sources
 
-| Tipo | Pasta |
+O campo `source` (cenas, áudios e overlays) aceita uma **string** ou um **objeto**. A string é o formato antigo e continua o padrão.
+
+| `source` | Origem | O que acontece |
+|---|---|---|
+| `"foto.jpg"` | pasta `input/` do tipo | `input/images/foto.jpg` (ou `videos` / `audios`) |
+| `{ "type": "file", "path": "/…" }` | arquivo local | usa o arquivo no lugar; não copia |
+| `{ "type": "asset", "id": "asset_…" }` | storage do Video Lab | lê a cópia importada com `pnpm asset import` |
+| `{ "type": "url", "url": "https://…" }` | HTTP/HTTPS | baixa para o temp do render e apaga depois |
+
+Fonte e `output` não usam esse objeto. Fonte: `input/fonts/` ou fonte do sistema. `output`: só o nome em `output/videos/`.
+
+| Tipo (string) | Pasta |
 |---|---|
 | `image` | `input/images/` |
 | `video` | `input/videos/` |
 | áudio | `input/audios/` |
 | fonte | `input/fonts/` (ou fonte do sistema) |
 | `output` | `output/videos/` |
+
+Detalhes, CLI de importação e restrições: [docs/assets.md](docs/assets.md).
 
 Defaults aplicados pelo parser quando o campo não vem no JSON:
 
@@ -153,7 +169,7 @@ Defaults aplicados pelo parser quando o campo não vem no JSON:
 | Campo | Descrição |
 |---|---|
 | `type` | `image` ou `video` |
-| `source` | nome do arquivo na pasta correspondente |
+| `source` | nome em `input/` **ou** objeto `file` / `asset` / `url` |
 | `duration` | duração da cena na timeline global, em segundos |
 | `mediaStart` | (vídeo) offset no arquivo de origem, em segundos. Default `0`. Inválido em `image` |
 | `shortMedia` | (vídeo) o que fazer se a mídia disponível for menor que a cena: `error` (default), `loop` ou `freeze`. Inválido em `image` |
@@ -322,7 +338,7 @@ Pode ser **global** (`audio` na raiz) ou **por cena** (`scenes[].audio`).
 
 | Campo | Descrição |
 |---|---|
-| `source` | nome do arquivo em `input/audios/` |
+| `source` | nome em `input/audios/` **ou** objeto `file` / `asset` / `url` |
 | `role` | `background` (vol. 0.3) ou `focus` (vol. 1.0) |
 | `start` | início na timeline (absoluto no global; relativo ao **início visual** da cena no local, inclusive no overlap do crossfade) |
 | `duration` | (opcional) duração do trecho |
@@ -395,7 +411,7 @@ Sem `drawtext` no FFmpeg, o `Renderer` rasteriza cada texto em PNG (Swift) com o
 
 | Campo | Descrição |
 |---|---|
-| `overlays[].source` | imagem em `input/images/` |
+| `overlays[].source` | imagem em `input/images/` **ou** objeto `file` / `asset` / `url` |
 | `overlays[].start` / `duration` | posição absoluta na timeline |
 | `overlays[].x` / `y` / `width` / `height` | caixa do overlay |
 
@@ -490,6 +506,7 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - `compositions/effects-transform.json` — scale/pan animados + brightness/contrast/saturation
 - `compositions/effects-crossfade.json` — A escura + B clara, crossfade 1s (total 9s)
 - `compositions/effects-media-timing.json` — mediaStart 30 + freeze + effects
+- `compositions/joao-e-maria.json` — dois Assets importados + áudio em `input/audios/`
 - `templates/quote.json` — fundo + título + autor
 - `templates/youtube-short.json` — 9:16, título, subtítulo, overlay
 - `templates/slideshow.json` — três cenas, fade e crossfade
@@ -511,6 +528,9 @@ A tradução para filtros acontece só no `FfmpegCommandBuilder`. O RenderPlan g
 - Effects são estáticos. `opacity` mistura a cena com o canvas preto (YUV); não fura a cena seguinte fora do `crossfade`.
 - `grayscale` e `sepia` passam por `format=gbrp` + `colorchannelmixer` e voltam para `yuv420p`.
 - A Factory é só em memória: se o processo morre, a fila some. Não há API HTTP, banco nem retry de erros determinísticos (template, asset, composition).
+- `source` tipo `url` aceita só HTTP/HTTPS, baixa para o temp do render e apaga depois. Não vira Asset automaticamente.
+- `source` tipo `file` não copia o arquivo; se o original sumir, o próximo render falha.
+- Assets importados ficam em `storage/assets/` (fora do git). Sem `pnpm asset import`, `{ "type": "asset", "id": "…" }` falha.
 
 ## Templates
 
@@ -536,6 +556,16 @@ pnpm factory render-template \
 
 Documentação: [docs/factory.md](docs/factory.md).
 
+## Assets e sources
+
+Arquivo local, Asset importado ou URL, sem quebrar o `source: "foto.jpg"`.
+
+```bash
+pnpm asset import /Users/caio/Desktop/foto.jpg
+pnpm asset list
+```
+
+Documentação: [docs/assets.md](docs/assets.md).
 
 ## Arquitetura
 
@@ -543,13 +573,16 @@ Documentação: [docs/factory.md](docs/factory.md).
 CLI
  ├── pnpm render            Composition JSON
  ├── pnpm render-template   Template + 1 input
- └── pnpm factory           Template + N inputs
+ ├── pnpm factory           Template + N inputs
+ └── pnpm asset             import / list / get
          ↓
 TemplateResolver → Composition (já validada pelo parser)
          ↓
 RenderJob / RenderManager   ← somente factory
          ↓
-Renderer
+Renderer.prepare
+ ├── SourceResolver → arquivo local
+ └── MediaResolver  → string "foto.jpg" em input/
          ↓
 RenderPlan → FfmpegCommandBuilder → FfmpegExecutor → FFmpeg
 ```
@@ -567,7 +600,8 @@ O CLI lê a composição, valida, imprime o comando FFmpeg e dispara o renderer.
 
 ```text
 Renderer
- ├── MediaResolver
+ ├── SourceResolver         (file / asset / url → path local)
+ ├── MediaResolver          (filename em input/ ou path já resolvido)
  ├── FontResolver
  ├── AudioTimeline
  ├── FfmpegCommandBuilder
@@ -580,10 +614,12 @@ O fallback de texto (PNG no bounding box) é escolhido pelo `Renderer` quando o 
 
 ```text
 input/
-  images/                 # imagens das cenas
-  audios/                 # áudios
-  videos/                 # vídeos de cena
+  images/                 # imagens das cenas (source string)
+  audios/                 # áudios (source string)
+  videos/                 # vídeos de cena (source string)
   fonts/                  # TTFs opcionais dos textos
+storage/
+  assets/                 # cópias importadas (pnpm asset import)
 output/
   videos/                 # MP4s; na factory: job-001/video.mp4 + manifest.json
 compositions/             # JSONs de composição
@@ -591,7 +627,7 @@ compositions/benchmark/   # cargas para pnpm benchmark
 templates/                # templates reutilizáveis
 templates/inputs/         # variáveis e batches
 templates/presets/        # presets de proporção (templates comuns)
-docs/                     # pipeline, factory, templates, performance
+docs/                     # pipeline, factory, templates, assets, performance
 scripts/                  # fallback de texto (Swift) sem drawtext
 src/
   cli/                    # entrada da aplicação
@@ -599,6 +635,9 @@ src/
   composition/            # parser e timeline de áudio
   template/               # resolver, validação e loader (sem FFmpeg)
   factory/                # jobs, fila, concorrência e manifest
+  asset/                  # importação e metadados de Asset
+  storage/                # filesystem local de assets
+  source/                 # SourceResolver (file / asset / url)
   media/                  # resolução de arquivos e fontes
   renderer/               # orquestração, contexto e métricas
   ffmpeg/                 # filtros, comando e executor
@@ -607,7 +646,7 @@ src/
 
 ## Documentação
 
-- [docs/gerar-videos.md](docs/gerar-videos.md) — como gerar vídeos (setup, JSON, template, lote)
+- [docs/gerar-videos.md](docs/gerar-videos.md) — como gerar vídeos (setup, JSON, template, lote, assets)
 - [flow-create-video.md](flow-create-video.md) — como o JSON vira comando FFmpeg
 - [ffmpeg-guide.md](ffmpeg-guide.md) — flags, filtros e o filter graph que o engine monta (`fade`, `xfade`, concat, overlay, transform, effects, áudio)
 - [docs/render-pipeline.md](docs/render-pipeline.md) — ciclo de vida do render
@@ -616,3 +655,4 @@ src/
 - [docs/cancellation.md](docs/cancellation.md) — AbortSignal e cleanup
 - [docs/templates.md](docs/templates.md) — Template Engine (variáveis, CLI e API)
 - [docs/factory.md](docs/factory.md) — Video Factory (batch, jobs, concorrência)
+- [docs/assets.md](docs/assets.md) — sources (`file`, `asset`, `url`) e `pnpm asset`

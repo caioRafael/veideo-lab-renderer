@@ -17,6 +17,7 @@ describe('RenderContext', () => {
       assert.notEqual(first.id, second.id)
       assert.notEqual(first.tempDir, second.tempDir)
       assert.equal(fs.existsSync(first.textDir), true)
+      assert.equal(fs.existsSync(first.downloadsDir), true)
       assert.equal(fs.existsSync(second.intermediateDir), true)
     } finally {
       disposeRenderContext(first)

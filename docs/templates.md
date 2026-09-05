@@ -82,11 +82,13 @@ Tipos suportados:
 | `string` | texto | `{{title}}` ou `$variable` |
 | `number` | número finito | somente `{ "$variable": "fontSize" }` |
 | `boolean` | `true` / `false` | somente `$variable` |
-| `asset` | caminho/nome de arquivo | `{{background}}` ou `$variable` |
+| `asset` | string (nome de arquivo ou path) | `{{background}}` ou `$variable` |
 
 Não há coerção. `"64"` não vira `64`.
 
-O engine **não abre** assets. A existência do arquivo continua sendo responsabilidade do renderer/parser.
+O tipo de variável `asset` **não** é o source `{ "type": "asset", "id": "…" }`. Ele interpola uma string no JSON (em geral o nome em `input/images/`). A existência do arquivo é resolvida depois, no renderer (`MediaResolver` ou `SourceResolver`).
+
+Para importar um arquivo e usar o id gerenciado, veja [assets.md](assets.md). Um template pode interpolar um path dentro de um source objeto: `{ "type": "file", "path": "{{photo}}" }`.
 
 ### Defaults
 

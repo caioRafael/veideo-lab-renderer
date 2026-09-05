@@ -1,6 +1,7 @@
 import type { AbsoluteAudio } from '../interfaces/absolute-audio'
 import type { AudioRole } from '../interfaces/audio'
 import type { Composition } from '../interfaces/composition'
+import { asSourcePath } from '../source/asSourcePath'
 import { scenePlacements } from './visualDuration'
 
 const DEFAULT_VOLUME: Record<AudioRole, number> = {
@@ -19,7 +20,7 @@ export class AudioTimeline {
         continue
       }
       clips.push({
-        source: clip.source,
+        source: asSourcePath(clip.source, 'audio source'),
         start,
         duration: Math.min(clip.duration ?? remaining, remaining),
         volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
@@ -41,7 +42,7 @@ export class AudioTimeline {
           continue
         }
         clips.push({
-          source: clip.source,
+          source: asSourcePath(clip.source, 'audio source'),
           start: absoluteStart,
           duration: Math.min(clip.duration ?? available, available),
           volume: clip.volume ?? DEFAULT_VOLUME[clip.role],
