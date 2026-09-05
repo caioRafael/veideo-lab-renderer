@@ -1761,8 +1761,10 @@ A árvore real (não um esboço futuro):
 
 ```text
 src/
-├── cli/           loadComposition + entrada
+├── index.ts       API pública
+├── api/           render() e parseComposition()
 ├── composition/   parser, visualDuration, AudioTimeline
+├── source/        file / asset / url → path local
 ├── interfaces/    Scene, Transition, RenderPlan
 ├── renderer/      Renderer, buildRenderPlan
 ├── media/         MediaResolver, FontResolver, rasterizeText
@@ -1774,14 +1776,14 @@ src/
 
 ---
 
-# 85. API interna
+# 85. API pública
 
-O renderer atual:
+A entrada do pacote:
 
 ```ts
-const composition = loadComposition('compositions/crossfade.json')
-const renderer = new Renderer({ mediaResolver, fontResolver })
-await renderer.render(composition)
+import { render } from 'video-lab'
+
+await render({ composition, assets, output })
 ```
 
 Internamente:
@@ -2073,7 +2075,7 @@ Com `fade`, fade-out na cena anterior, fade-in na seguinte, depois `concat`. A d
 
 # 91. Conferir um render
 
-Depois de `pnpm dev -- compositions/crossfade.json`:
+Depois de renderizar uma composition com crossfade:
 
 ```bash
 ffprobe -v error \
@@ -2081,7 +2083,7 @@ ffprobe -v error \
   -show_entries stream=codec_name,width,height,r_frame_rate,pix_fmt \
   -show_entries format=duration \
   -of default=noprint_wrappers=1 \
-  output/videos/output.mp4
+  /path/output.mp4
 ```
 
 Esperado para `compositions/crossfade.json` (5s + 5s, T=1s): duração **9s**, 1920×1080, 25 fps, `yuv420p`.

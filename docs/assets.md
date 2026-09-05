@@ -1,14 +1,13 @@
 # Assets e sources
 
-Uso prático (copiar para `input/`, importar, renderizar): [gerar-videos.md](gerar-videos.md).
-
-O campo `source` de cenas, áudios e overlays aceita o **nome de arquivo** de sempre **ou** um objeto com origem explícita. Em todos os casos o FFmpeg só recebe um caminho local.
+O campo `source` de cenas, áudios e overlays aceita uma **string** (id lógico ou caminho absoluto) ou um **objeto**. Em todos os casos o FFmpeg só recebe um caminho local.
 
 ```text
-string "foto.jpg"     → MediaResolver → input/<tipo>/foto.jpg
-{ type: "file" }      → LocalFileSourceResolver → arquivo no disco
-{ type: "asset" }     → AssetSourceResolver → cópia em storage/assets/
-{ type: "url" }       → UrlSourceResolver → download em RenderContext/downloads/
+string "background"                 → assets.background
+string "/abs/foto.jpg"              → o próprio caminho
+{ type: "asset", id: "background" } → assets.background
+{ type: "file", path }              → LocalFileSourceResolver
+{ type: "url", url }                → download em RenderContext/downloads/
          ↓
 ResolvedSource.path
          ↓
@@ -17,20 +16,39 @@ MediaResolver / RenderPlan
 FFmpeg
 ```
 
-O `Renderer` não conhece HTTP, storage nem importação. Ele materializa as sources no `prepare` e segue o pipeline antigo.
+A aplicação passa o mapa em `render({ assets })`. O core não importa, cataloga nem copia mídia para `storage/`. Não existe pasta `input/` obrigatória.
 
-## Formato string (compatível)
+## string e asset
 
-Compositions e templates existentes continuam válidos. A pasta vem do tipo:
+Os dois resolvem o mesmo mapa:
 
-| Tipo | Pasta |
-|---|---|
-| `image` / overlay | `input/images/` |
-| `video` | `input/videos/` |
-| áudio | `input/audios/` |
+```ts
+await render({
+  composition: {
+    scenes: [{ type: 'image', source: 'background', duration: 4 }],
+  },
+  assets: {
+    background: '/path/background.png',
+  },
+  output: '/path/video.mp4',
+})
+```
 
 ```json
-{ "type": "image", "source": "foto.jpg", "duration": 5 }
+{
+  "type": "image",
+  "source": { "type": "asset", "id": "background" },
+  "duration": 4
+}
+```
+
+Uma string relativa que não está em `assets` falha. Os JSONs em `compositions/` usam nomes de arquivo como id (`"flamengo.png"`). Para renderizá-los, mapeie cada id:
+
+```ts
+assets: {
+  'flamengo.png': '/path/to/flamengo.png',
+  'audio.mp3': '/path/to/audio.mp3',
+}
 ```
 
 ## file
@@ -50,44 +68,9 @@ Arquivo em qualquer lugar do computador. O engine **lê no lugar**; não copia.
 
 O arquivo precisa existir e ser um arquivo (não um diretório).
 
-## asset
-
-Mídia importada e gerenciada pelo Video Lab. O original **não** é movido: uma cópia vai para `storage/assets/`.
-
-```bash
-pnpm asset import /Users/caio/Desktop/foto.jpg
-pnpm asset list
-pnpm asset get asset_0123456789abcdef0123456789abcdef
-```
-
-```text
-/Users/caio/Desktop/foto.jpg
-        │ copy
-        ▼
-storage/assets/asset_<id>/original.jpg
-storage/assets/asset_<id>/meta.json
-```
-
-O id é `asset_` + UUID sem hífens. Não deriva do nome do arquivo.
-
-```json
-{
-  "type": "image",
-  "source": {
-    "type": "asset",
-    "id": "asset_0123456789abcdef0123456789abcdef"
-  },
-  "duration": 5
-}
-```
-
-Tipos aceitos na importação: imagem (`jpg`, `jpeg`, `png`, `gif`, `webp`, `bmp`), vídeo (`mp4`, `mov`, `webm`, `mkv`) e áudio (`mp3`, `wav`, `aac`, `m4a`, `ogg`).
-
-`storage/` não entra no git.
-
 ## url
 
-Somente `http://` e `https://`. O arquivo é baixado para `RenderContext.downloadsDir` (timeout 30s) e apagado no sucesso, no erro e no cancelamento. A URL **não** vira Asset automaticamente.
+Somente `http://` e `https://`. O arquivo é baixado para `RenderContext.downloadsDir` (timeout 30s) e apagado no sucesso, no erro e no cancelamento.
 
 ```json
 {
@@ -100,6 +83,15 @@ Somente `http://` e `https://`. O arquivo é baixado para `RenderContext.downloa
 }
 ```
 
+## Fontes
+
+Texto não usa `assets`. A fonte vem de:
+
+1. caminho absoluto no campo `font` / `style.font` (arquivo `.ttf` / `.otf` / `.ttc`);
+2. diretório passado em `render({ fonts })`;
+3. fontes empacotadas em `assets/fonts`;
+4. fontes do sistema (Arial, DejaVu, Liberation, etc.).
+
 ## Onde `source` aparece
 
 O mesmo contrato vale em:
@@ -108,15 +100,3 @@ O mesmo contrato vale em:
 - `scenes[].audio[].source`
 - `audio[].source`
 - `overlays[].source`
-
-## Template type `asset`
-
-No Template Engine, o tipo de variável `asset` continua sendo uma **string** (nome de arquivo ou valor interpolado). Não é o objeto `{ "type": "asset", "id": "…" }`.
-
-Um template pode interpolar um path dentro de um source objeto:
-
-```json
-{ "type": "file", "path": "{{photo}}" }
-```
-
-Documentação do template: [templates.md](templates.md).

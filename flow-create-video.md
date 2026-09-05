@@ -1,17 +1,15 @@
-# Guia: JSON → MP4
+# Guia: Composition → MP4
 
-Como a composição vira um vídeo no video-lab.
+Como o objeto de composição vira um vídeo no video-lab. A entrada é `render({ composition, assets, output })`. Não há arquivo JSON obrigatório nem CLI.
 
 ## Pipeline
 
 ```text
-JSON de Composition
-    ou  Template + input  → TemplateResolver
-    ou  Template + N inputs → VideoFactory → N jobs
-→ CompositionParser (já chamado no resolver)
+render({ composition, assets, output })
+→ CompositionParser
 → Renderer.prepare
     → SourceResolver (file / asset / url → path local)
-    → MediaResolver  (string "foto.jpg" → input/)
+    → MediaResolver  (path já resolvido)
 → RenderPlan
 → Tracks
 → FfmpegCommandBuilder
@@ -20,7 +18,7 @@ JSON de Composition
 → MP4
 ```
 
-O JSON descreve a timeline. O parser valida e aplica defaults. Templates só produzem Composition. A Factory só orquestra jobs. Sources estruturadas viram arquivo local no `prepare`. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
+O objeto descreve a timeline. O parser valida e aplica defaults. Sources estruturadas viram arquivo local no `prepare`. O `Renderer` monta um `RenderPlan` com tracks independentes. Só então o `FfmpegCommandBuilder` gera argumentos de FFmpeg (spawn, não string concatenada).
 
 ```text
 Video Track     cenas em sequência (image ou video)
@@ -35,37 +33,35 @@ Camadas visuais, de baixo para cima: vídeo → overlays → texto.
 
 ## Schema do JSON
 
-Arquivo exemplo: `compositions/example.json`
+Exemplo em `compositions/example.json`. As strings de `source` são ids do mapa `assets` passado em `render({ assets })`.
 
-```json
-{
-  "output": "output.mp4",
-  "width": 1920,
-  "height": 1080,
-  "fps": 25,
-  "scenes": [
-    { "type": "image", "source": "flamengo.png", "duration": 4 },
-    { "type": "image", "source": "input.png", "duration": 4 },
-    { "type": "image", "source": "flamengo.png", "duration": 6 }
-  ],
-  "audio": [
-    { "source": "audio2.mp3", "role": "background", "start": 0, "duration": 8 },
-    { "source": "audio.mp3", "role": "focus", "start": 8, "duration": 6 }
-  ]
-}
+```ts
+await render({
+  composition: {
+    width: 1920,
+    height: 1080,
+    fps: 25,
+    scenes: [
+      { type: 'image', source: 'flamengo.png', duration: 4 },
+      { type: 'image', source: 'input.png', duration: 4 },
+      { type: 'image', source: 'flamengo.png', duration: 6 },
+    ],
+    audio: [
+      { source: 'audio2.mp3', role: 'background', start: 0, duration: 8 },
+      { source: 'audio.mp3', role: 'focus', start: 8, duration: 6 },
+    ],
+  },
+  assets: {
+    'flamengo.png': '/path/flamengo.png',
+    'input.png': '/path/input.png',
+    'audio.mp3': '/path/audio.mp3',
+    'audio2.mp3': '/path/audio2.mp3',
+  },
+  output: '/path/output.mp4',
+})
 ```
 
-`source` como string continua sendo só o nome do arquivo. A pasta vem do tipo:
-
-| Tipo | Pasta |
-|---|---|
-| `image` / overlay | `input/images/` |
-| `video` | `input/videos/` |
-| áudio extra | `input/audios/` |
-| fonte | `input/fonts/` ou fonte do sistema |
-| `output` | `output/videos/` |
-
-O mesmo campo aceita `{ "type": "file" }`, `{ "type": "asset" }` ou `{ "type": "url" }`. Depois do `SourceResolver`, o FFmpeg recebe um path local — o `RenderPlan` não conhece URL nem Asset. Ver [docs/assets.md](docs/assets.md).
+`source` também aceita `{ type: "file" }`, `{ type: "asset", id }` ou `{ type: "url" }`. Depois do `SourceResolver`, o FFmpeg recebe um path local — o `RenderPlan` não conhece URL nem id de asset. Ver [docs/assets.md](docs/assets.md) e [docs/api.md](docs/api.md).
 
 ### Cenas
 
@@ -108,21 +104,21 @@ O `RenderPlan` não contém `-filter_complex` nem `drawtext`. Isso fica no build
 Imagem:
 
 ```bash
--loop 1 -t 4 -i input/images/flamengo.png
+-loop 1 -t 4 -i /path/flamengo.png
 ```
 
 Vídeo (sem offset):
 
 ```bash
--t 8 -i input/videos/gloria-eterna.mp4
+-t 8 -i /path/gloria-eterna.mp4
 ```
 
 Vídeo com `mediaStart` / `shortMedia`:
 
 ```bash
--ss 20 -t 5 -i input/videos/gloria-eterna.mp4          # trim
--ss 164 -t 1.837 -i input/videos/gloria-eterna.mp4     # loop: lê o trecho disponível; split+concat no filtro
--ss 164 -t 6 -i input/videos/gloria-eterna.mp4         # freeze (tpad no filtro)
+-ss 20 -t 5 -i /path/gloria-eterna.mp4          # trim
+-ss 164 -t 1.837 -i /path/gloria-eterna.mp4     # loop: lê o trecho disponível; split+concat no filtro
+-ss 164 -t 6 -i /path/gloria-eterna.mp4         # freeze (tpad no filtro)
 ```
 
 Depois do seek, o filtro zera PTS (`setpts=PTS-STARTPTS`) para a cena começar em `t = 0`. Animação e transição usam a duração da cena, não o relógio do arquivo.
@@ -183,7 +179,7 @@ Textos: o `TextRenderer` normaliza linhas (wrap no Node). Com `drawtext`, o `Tex
 -map "[vout]" -map "[aout]"
 -c:v libx264 -c:a aac
 -t TOTAL -pix_fmt yuv420p
-output/videos/output.mp4
+/path/output.mp4
 ```
 
 ---
@@ -191,13 +187,13 @@ output/videos/output.mp4
 ## Diagrama
 
 ```text
-CLI
+render({ composition, assets, output })
  ↓
-loadComposition / CompositionParser
+CompositionParser
  ↓
 Renderer.prepare
   SourceResolver → path local
-  MediaResolver  → input/ (string) ou path já resolvido
+  MediaResolver  → path já resolvido
  ↓
 RenderPlan (tracks)
  ↓
@@ -217,28 +213,16 @@ audio / keepAudio   ─► Audio Track ─► atrim/adelay/amix ─────�
 
 ---
 
-## Como rodar
+## Como usar
 
-```bash
-pnpm dev
-pnpm dev -- compositions/example.json
-pnpm dev -- compositions/full-timeline.json
-pnpm dev -- compositions/video-photos.json
-pnpm dev -- compositions/transform-scale.json
-pnpm dev -- compositions/transform-with-crossfade.json
-pnpm dev -- compositions/ken-burns.json
-pnpm dev -- compositions/easing-in-out.json
-pnpm dev -- compositions/animated-with-fade.json
-pnpm dev -- compositions/media-trim.json
-pnpm dev -- compositions/media-loop.json
-pnpm dev -- compositions/media-freeze.json
-pnpm dev -- compositions/effect-brightness.json
-pnpm dev -- compositions/effects-combined.json
-pnpm dev -- compositions/effects-transform.json
-pnpm dev -- compositions/effects-crossfade.json
-pnpm dev -- compositions/effects-media-timing.json
+```ts
+import { render } from 'video-lab'
+
+await render({
+  composition,
+  assets,
+  output: './output/video.mp4',
+})
 ```
 
-A CLI imprime o comando FFmpeg antes de executar. Em erro, o processo termina com código `1`.
-
-Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) são estáticos e entram depois do transform. Ver [README](README.md#transformações) e [README](README.md#efeitos).
+Exemplos de Composition estão em `compositions/`. As strings de `source` nesses arquivos são ids de asset. Transições (`fade` / `crossfade`) são declaradas na cena de destino. Transformações (`scale`, `position`, `crop`, `zoom`, `pan`) pertencem à mídia da cena e podem ser estáticas ou animadas (`from`/`to`, com `easing` opcional). Effects (`opacity`, `brightness`, `contrast`, `saturation`, `grayscale`, `sepia`, `blur`) são estáticos e entram depois do transform. Ver [README](README.md#transformações), [README](README.md#efeitos) e [docs/api.md](docs/api.md).

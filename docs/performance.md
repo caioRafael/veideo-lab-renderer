@@ -10,14 +10,7 @@ Menor é melhor. Medido com `performance.now()`.
 
 ## Como medir
 
-```bash
-pnpm render compositions/example.json --verbose
-pnpm benchmark
-```
-
-`--verbose` mostra cenas, duração, factor, tamanho do output e tempo por fase.
-
-O benchmark grava `docs/benchmark-results.json`.
+O `render()` devolve `metrics.renderFactor`, `metrics.videoDuration` e tempos por fase. Use esses campos na aplicação consumidora.
 
 ## Baseline (antes da otimização de rasterize)
 
@@ -91,12 +84,4 @@ O executor não acumula stdout/stderr. Mantém no máximo ~16 KB de stderr para 
 
 Cada render tem o próprio `RenderContext`. Rasterização de texto usa no máximo 4 processos Swift por render.
 
-A Video Factory limita FFmpeg simultâneos com `--concurrency`. Batch de 3 YouTube Shorts (8s, 1080×1920):
-
-```text
-concurrency=1    wall 7.75s
-concurrency=2    wall 6.99s
-concurrency=4    wall 7.56s
-```
-
-Mais concorrência não foi automaticamente mais rápido neste lote curto.
+O core renderiza **um** vídeo por chamada a `render()`. Lote e limite de FFmpeg simultâneos ficam na aplicação consumidora.

@@ -3,13 +3,13 @@
 O video-lab orquestra o FFmpeg. O Node não processa frames.
 
 ```text
-Composition  ou  Template + Input → TemplateResolver
-    ↓                    (factory: N inputs → N jobs → RenderManager)
-loadComposition / CompositionParser
+render({ composition, assets, output })
+    ↓
+CompositionParser
     ↓
 Renderer.prepare
     ├── SourceResolver → arquivo local (file / asset / url)
-    ├── MediaResolver  → filename em input/ ou path já resolvido
+    ├── MediaResolver  → path já resolvido
     ↓
 RenderPlan + RenderContext
     ↓
@@ -22,16 +22,18 @@ FfmpegExecutor (spawn)
 cleanup
 ```
 
+A API pública (`render`) é o único fluxo de entrada. Ela parseia o objeto, aplica `output` e `assets`, e chama o mesmo `Renderer` interno.
+
 ## Ciclo de vida
 
-1. **loading** — a CLI lê e valida o JSON.
+1. **parse** — `CompositionParser` valida o objeto em memória e aplica defaults.
 2. **planning** — `SourceResolver` materializa `file` / `asset` / `url`; `buildRenderPlan` monta tracks.
 3. **preparing** — probe de duração, rasterização de texto (se não houver `drawtext`), comando FFmpeg.
 4. **rendering** — `spawn` do FFmpeg. O arquivo é escrito em `name.tmp.mp4` (extensão `.mp4` para o muxer).
 5. **finalizing** — rename atômico para o caminho final.
 6. **completed** / **cancelled** / **failed** — cleanup do `RenderContext`.
 
-`prepare` e `runPrepared` / `execute` continuam separados. `render()` é o atalho das duas etapas.
+Por baixo, `prepare` e `runPrepared` continuam separados. A API pública executa os dois.
 
 ## RenderContext
 
@@ -44,7 +46,7 @@ Cada render ganha um diretório isolado:
   downloads/          # arquivos baixados de source.type = url
 ```
 
-Dois `Renderer` podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez. A Factory cria uma instância por job e limita quantas rodam juntos (`maxConcurrentRenders`).
+Dois renders podem rodar ao mesmo tempo sem colidir. Um mesmo `Renderer` trata um render por vez. A aplicação que quiser lote cria essa concorrência do lado de fora.
 
 ## Temporary files
 
@@ -61,4 +63,4 @@ Textos rasterizados (fallback PNG) vão para `context.textDir`. Downloads de URL
 
 ## Output
 
-O MP4 final só aparece depois do exit 0. Um render interrompido não deve deixar `output.mp4` pela metade; o staging `.tmp` é apagado.
+O caminho final vem de `render({ output })`. O MP4 só aparece depois do exit 0. Um render interrompido não deixa o arquivo de saída pela metade; o staging `.tmp` é apagado.

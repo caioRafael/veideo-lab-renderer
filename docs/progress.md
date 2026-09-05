@@ -1,10 +1,31 @@
 # Progresso
 
-O engine expõe progresso por callback. A CLI só decide como imprimir.
+O engine expõe progresso por callback na API pública.
+
+```ts
+import { render } from 'video-lab'
+
+await render({
+  composition,
+  assets,
+  output,
+  onProgress: (progress) => {
+    console.log(progress.phase, progress.progress)
+  },
+})
+```
 
 ```ts
 interface RenderProgress {
-  phase: 'loading' | 'planning' | 'preparing' | 'rendering' | 'finalizing' | 'completed' | 'cancelled' | 'failed'
+  phase:
+    | 'loading'
+    | 'planning'
+    | 'preparing'
+    | 'rendering'
+    | 'finalizing'
+    | 'completed'
+    | 'cancelled'
+    | 'failed'
   progress: number // 0..1
   elapsedMs: number
   durationMs?: number
@@ -12,11 +33,9 @@ interface RenderProgress {
   speed?: number
   message?: string
 }
-
-await renderer.render(composition, {
-  onProgress: (progress) => { /* CLI, API, worker */ },
-})
 ```
+
+A API pública emite, nesta ordem típica: `planning` → `preparing` → `rendering` → `finalizing` → `completed`. `loading` existe no tipo, mas o parse da composition acontece antes do callback.
 
 ## Regras
 
@@ -24,21 +43,4 @@ await renderer.render(composition, {
 - Durante o FFmpeg, `progress` vem de `time=` no stderr dividido pela duração do vídeo. Não é inventado.
 - Antes do primeiro `time=`, o progresso permanece `0` e a fase já identifica a etapa.
 - Conclusão: `phase: "completed"`, `progress: 1`.
-- Erro ou cancelamento emitem `failed` / `cancelled`.
-
-## Factory
-
-O lote agrega outro nível, sem substituir o callback do Renderer:
-
-```ts
-interface FactoryProgress {
-  total: number
-  completed: number
-  failed: number
-  cancelled: number
-  active: number
-  queued: number
-}
-```
-
-`--verbose` na Factory mostra totais do batch e o progresso dos jobs ativos. Não misture a porcentagem de um vídeo com `37/100` do lote.
+- Erro ou cancelamento emitem `failed` / `cancelled` e a Promise rejeita.

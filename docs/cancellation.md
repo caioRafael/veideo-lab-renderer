@@ -1,11 +1,21 @@
 # Cancelamento
 
-O renderer aceita `AbortSignal`:
+A API pública aceita `AbortSignal`:
 
 ```ts
+import { render } from 'video-lab'
+
 const controller = new AbortController()
-await renderer.render(composition, { signal: controller.signal })
+
+const job = render({
+  composition,
+  assets,
+  output,
+  signal: controller.signal,
+})
+
 controller.abort()
+await job // rejeita com RenderCancelledError
 ```
 
 ## Comportamento
@@ -24,18 +34,8 @@ RenderContext é apagado (textos PNG e downloads de URL)
 RenderCancelledError
 ```
 
-A CLI (`pnpm render`, `pnpm render-template`, `pnpm factory`) liga SIGINT/SIGTERM a um `AbortController`.
-
-## Factory
-
-Cancelar o batch cancela jobs `queued` (sem FFmpeg) e aborta os que estão renderizando. Jobs `completed` ficam completed.
-
-```ts
-const controller = new AbortController()
-await factory.renderTemplate({ template, inputs, signal: controller.signal })
-```
+A aplicação consumidora decide quando abortar (timeout, botão, shutdown). O core não escuta SIGINT/SIGTERM.
 
 ## Limites
 
 - A rasterização Swift é interrompida entre textos (e no `spawn` atual, também via `AbortSignal` do processo).
-- Probe `ffprobe` é síncrono e curto; o sinal é conferido antes e depois.
