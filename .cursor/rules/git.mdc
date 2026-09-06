@@ -1,6 +1,8 @@
 ---
-description: Regras para Git e commits
+description: Regras para Git, commits e versionamento do projeto
 alwaysApply: true
+---
+
 ---
 
 # Git
@@ -11,6 +13,7 @@ alwaysApply: true
 - Não executar comandos destrutivos que possam apagar alterações do usuário.
 - Antes de criar um commit, verificar quais arquivos foram modificados.
 - Não incluir arquivos não relacionados à tarefa no commit.
+- Nunca modificar arquivos não relacionados à tarefa apenas para criar um commit ou atualizar uma versão.
 
 # Commits
 
@@ -20,26 +23,30 @@ alwaysApply: true
 
 Formato:
 
-<type>: <description>
+`<type>: <description>`
 
 Tipos permitidos:
 
-- feat: nova funcionalidade
-- fix: correção de bug
-- refactor: refatoração
-- docs: documentação
-- test: testes
-- chore: manutenção/configuração
-- perf: melhoria de performance
-- style: formatação/estilo
+- `feat`: nova funcionalidade
+- `fix`: correção de bug
+- `refactor`: refatoração
+- `docs`: documentação
+- `test`: testes
+- `chore`: manutenção/configuração
+- `perf`: melhoria de performance
+- `style`: formatação/estilo
 
 Exemplos:
 
-feat: add video rendering service
-fix: handle ffmpeg rendering error
-refactor: separate renderer from worker
-docs: update project documentation
-chore: configure eslint
+`feat: add video rendering service`
+
+`fix: handle ffmpeg rendering error`
+
+`refactor: separate renderer from worker`
+
+`docs: update project documentation`
+
+`chore: configure eslint`
 
 # Regras para mensagens
 
@@ -48,3 +55,137 @@ chore: configure eslint
 - Manter a descrição curta e objetiva.
 - Não utilizar ponto final.
 - Não incluir detalhes desnecessários na mensagem.
+
+# Versionamento
+
+- O projeto deve utilizar Semantic Versioning (SemVer) no formato `MAJOR.MINOR.PATCH`.
+- Toda alteração que será commitada deve ser analisada para determinar se representa uma mudança de versão.
+- Antes de criar o commit, analisar as alterações e identificar o impacto da mudança na versão atual.
+- Não alterar a versão automaticamente sem solicitar confirmação explícita do usuário.
+
+## Classificação da versão
+
+### MAJOR
+
+Usar incremento de `MAJOR` quando houver uma alteração incompatível com versões anteriores (breaking change).
+
+Exemplos:
+
+- Alterar ou remover uma API pública existente.
+- Alterar contratos públicos de funções, classes ou interfaces de maneira incompatível.
+- Remover funcionalidades existentes.
+- Alterar o comportamento esperado de uma funcionalidade de maneira incompatível.
+- Alterar formatos de dados ou estruturas públicas de maneira incompatível.
+- Fazer qualquer alteração que exija mudanças no código dos consumidores da biblioteca.
+
+Exemplo:
+
+`1.4.2 -> 2.0.0`
+
+### MINOR
+
+Usar incremento de `MINOR` quando houver uma nova funcionalidade compatível com versões anteriores.
+
+Exemplos:
+
+- Adicionar uma nova funcionalidade.
+- Adicionar uma nova API pública.
+- Adicionar novos parâmetros opcionais.
+- Adicionar novos recursos sem quebrar funcionalidades existentes.
+
+Exemplo:
+
+`1.4.2 -> 1.5.0`
+
+Ao incrementar `MINOR`, zerar o `PATCH`.
+
+### PATCH
+
+Usar incremento de `PATCH` para alterações compatíveis que não adicionem uma nova funcionalidade relevante.
+
+Exemplos:
+
+- Correção de bugs.
+- Pequenas melhorias internas.
+- Refatorações sem alteração de comportamento público.
+- Melhorias de performance compatíveis.
+- Atualizações de documentação.
+- Ajustes de configuração.
+- Correções de testes.
+- Alterações de estilo ou formatação.
+
+Exemplo:
+
+`1.4.2 -> 1.4.3`
+
+# Análise de versão
+
+Antes de criar qualquer commit:
+
+1. Verificar a versão atual do projeto.
+2. Analisar todas as alterações que serão incluídas no commit.
+3. Determinar se a alteração representa `MAJOR`, `MINOR` ou `PATCH`.
+4. Explicar brevemente ao usuário o motivo da classificação.
+5. Informar claramente a versão atual e a versão proposta.
+
+Exemplo:
+
+> Versão atual: `1.4.2`
+>
+> Tipo identificado: `MINOR`
+>
+> Nova versão proposta: `1.5.0`
+>
+> Motivo: foi adicionada uma nova funcionalidade compatível com a API existente.
+>
+> Deseja atualizar a versão para `1.5.0`?
+
+# Confirmação obrigatória
+
+- Sempre perguntar ao usuário se ele concorda com a alteração de versão antes de modificar qualquer arquivo de versão.
+
+- Nunca assumir que o usuário aprovou a alteração.
+
+- A pergunta deve apresentar:
+
+  - versão atual;
+  - tipo da alteração (`MAJOR`, `MINOR` ou `PATCH`);
+  - nova versão proposta;
+  - justificativa curta.
+
+- Aguardar uma resposta explícita do usuário antes de atualizar a versão.
+
+# Atualização da versão
+
+Após a aprovação do usuário:
+
+- Atualizar a versão nos arquivos apropriados do projeto.
+- Identificar automaticamente onde a versão do projeto é definida.
+- Não criar novos arquivos de versionamento sem necessidade.
+- Manter todas as referências de versão consistentes quando aplicável.
+- Incluir no commit somente os arquivos relacionados à alteração.
+- Verificar o `git diff` antes de criar o commit.
+- Confirmar que a alteração da versão está incluída no mesmo commit da alteração lógica correspondente.
+
+# Rejeição da versão
+
+Se o usuário não concordar com a alteração proposta:
+
+- Não modificar os arquivos de versão.
+- Não tentar alterar a classificação da versão apenas para obter aprovação.
+- Informar que a versão não será alterada.
+- Antes de criar o commit, confirmar que o usuário deseja prosseguir sem atualizar a versão, caso isso ainda não esteja claro.
+
+# Regras adicionais
+
+- Uma única alteração lógica deve preferencialmente gerar uma única atualização de versão.
+- Não incrementar a versão múltiplas vezes para o mesmo conjunto de alterações.
+- Não incrementar `MAJOR`, `MINOR` ou `PATCH` arbitrariamente.
+- A classificação deve ser baseada no impacto real das alterações, e não apenas no tipo do Conventional Commit.
+- `feat` normalmente indica `MINOR`, mas deve ser analisado caso a funcionalidade introduza breaking changes.
+- `fix`, `refactor`, `docs`, `test`, `chore`, `perf` e `style` normalmente indicam `PATCH`, mas devem ser analisados de acordo com o impacto real.
+- Um `refactor` que altere uma API pública de maneira incompatível deve ser classificado como `MAJOR`.
+- Uma alteração pode exigir `MAJOR` mesmo que o commit seja `fix`, `refactor` ou outro tipo.
+- Se houver múltiplas alterações no mesmo commit, considerar o maior impacto de compatibilidade entre elas.
+- Nunca atualizar a versão apenas porque um commit está sendo criado.
+- Nunca executar `git push` automaticamente após criar o commit.
